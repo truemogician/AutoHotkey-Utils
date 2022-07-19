@@ -16,12 +16,12 @@ class Functionality {
 
 	/**
 	 * In many games, the player needs to hold down a key to perform an action.
-	 * This class could turn the operation mode into toggling to save your fingers.
+	 * If the action lasts long enough, it would be a pain for fingers.
+	 * This class would transfer quick click to toggling, while still preserve the original mode for long hold.
 	 */
-	class HoldToToggle {
+	class ToggleInHold {
 		/**
-		 * @param threshold Pressing `key` for less than `threshold` will be interpreted as a "click"
-		 * and thus won't trigger corresponding actions. Default is 200ms.
+		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 */
 		__New(key, threshold := 200) {
 			this.Key := key
