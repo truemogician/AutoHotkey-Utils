@@ -6,12 +6,12 @@ class Functionality {
 
 	static pPressed := Map()
 
-	static waiting := Map()
+	static lastPressedTime := Map()
 
 	static Initialize(key) {
 		Functionality.fPressed[key] := false
 		Functionality.pPressed[key] := false
-		Functionality.waiting[key] := false
+		Functionality.lastPressedTime[key] := 0
 	}
 
 	/**
@@ -32,21 +32,18 @@ class Functionality {
 		Down() {
 			Functionality.pPressed[this.Key] := true
 			if (!Functionality.fPressed[this.Key]) {
-				Functionality.fPressed[this.Key] := true
 				SendInput("{" this.Key " Down}")
-				Functionality.waiting[this.Key] := true
-				action() {
-					Functionality.waiting[this.Key] := false
-				}
-				SetTimer(action, -this.Threshold)
+				Functionality.fPressed[this.Key] := true
+				Functionality.lastPressedTime := A_TickCount
 			}
 		}
 
 		Up() {
 			Functionality.pPressed[this.Key] := false
-			if (!Functionality.waiting[this.Key]) {
-				Functionality.fPressed[this.Key] := false
+			if (A_TickCount - Functionality.lastPressedTime[this.Key] > this.Threshold) {
 				SendInput("{" this.Key " Up}")
+				Functionality.fPressed[this.Key] := false
+				Functionality.lastPressedTime := 0
 			}
 		}
 	}
@@ -100,8 +97,6 @@ class Functionality {
 	 * Press the original key for the first time it is clicked, and press a secondary key when double clicked.
 	 */
 	class DoubleClickSecondaryKey {
-		lastPressedTime := Map()
-
 		/**
 		 * @param altKey The secondary key to press when double clicked.
 		 * @param timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
@@ -118,15 +113,15 @@ class Functionality {
 				SendInput("{" this.Key " Down}")
 				return
 			}
-			local last := this.lastPressedTime.Has(this.Key) ? this.lastPressedTime[this.Key] : 0
+			local last := Functionality.lastPressedTime.Has(this.Key) ? Functionality.lastPressedTime[this.Key] : 0
 			if (A_TickCount - last > this.Timeout) {
 				SendInput("{" this.Key " Down}")
 				Functionality.pPressed[this.Key] := true
-				this.lastPressedTime[this.Key] := A_TickCount
+				Functionality.lastPressedTime[this.Key] := A_TickCount
 			} else {
 				SendInput("{" this.AltKey " Down}")
 				Functionality.pPressed[this.AltKey] := true
-				this.lastPressedTime[this.Key] := 0
+				Functionality.lastPressedTime[this.Key] := 0
 			}
 		}
 
