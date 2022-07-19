@@ -49,6 +49,56 @@ class Functionality {
 	}
 
 	/**
+	 * In many games, some keys are used to toggle certain status.
+	 * But in some cases, the status only needs to be enabled for a short time, and clicking twice reduces reactivity.
+	 * This class would transfer long hold to holding, which means that the status will be toggle when pressed and toggled back when released,
+	 * while still preserve the original mode for quick click.
+	 */
+	class HoldInToggle {
+		/**
+		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
+		 * @param pressTime The time the key will be hold for a click. Default is 50ms.
+		 */
+		__New(key, threshold := 200, pressTime := 50) {
+			this.Key := key
+			this.Threshold := threshold
+			this.PressTime := pressTime
+			Functionality.Initialize(key)
+		}
+
+		Down() {
+			if (Functionality.pPressed[this.Key])
+				return
+			Functionality.pPressed[this.Key] := true
+			SendInput("{" this.Key " Down}")
+			Functionality.fPressed[this.Key] := true
+			timerFunction() {
+				if (Functionality.pPressed[this.Key]) {
+					SendInput("{" this.Key " Up}")
+					Functionality.fPressed[this.Key] := false
+				}
+			}
+			SetTimer(timerFunction, -this.Threshold)
+		}
+
+		Up() {
+			Functionality.pPressed[this.Key] := false
+			if (Functionality.fPressed[this.Key]) {
+				SendInput("{" this.Key " Up}")
+				Functionality.fPressed[this.Key] := false
+			} else if (this.PressTime <= 0) {
+				SendInput("{" this.Key "}")
+			} else {
+				SendInput("{" this.Key " Down}")
+				Functionality.fPressed[this.Key] := true
+				Sleep(this.PressTime)
+				SendInput("{" this.Key " Up}")
+				Functionality.fPressed[this.Key] := false
+			}
+		}
+	}
+
+	/**
 	 * In some situations, the player needs to click a key continuously, which is exhausting.
 	 * This class allows you to perform such action at a specified frequency while holding the key.
 	 */
