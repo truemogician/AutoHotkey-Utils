@@ -1,3 +1,6 @@
+/**
+ * Some common useful functionality for games. To use, instantiate a sub class, then bind the `Down` and `Up` methods to corresponding keys.
+ */
 class Functionality {
 	static fPressed := Map()
 
@@ -11,10 +14,18 @@ class Functionality {
 		Functionality.waiting[key] := false
 	}
 
+	/**
+	 * In many games, the player needs to hold down a key to perform an action.
+	 * This class could turn the operation mode into toggling to save your fingers.
+	 */
 	class HoldToToggle {
-		__New(key, timeout) {
+		/**
+		 * @param threshold Pressing `key` for less than `threshold` will be interpreted as a "click"
+		 * and thus won't trigger corresponding actions. Default is 200ms.
+		 */
+		__New(key, threshold := 200) {
 			this.Key := key
-			this.Timeout := timeout
+			this.Threshold := threshold
 			Functionality.Initialize(key)
 		}
 
@@ -27,7 +38,7 @@ class Functionality {
 				action() {
 					Functionality.waiting[this.Key] := false
 				}
-				SetTimer(action, -this.Timeout)
+				SetTimer(action, -this.Threshold)
 			}
 		}
 
@@ -40,8 +51,16 @@ class Functionality {
 		}
 	}
 
+	/**
+	 * In some situations, the player needs to click a key continuously, which is exhausting.
+	 * This class allows you to perform such action at a specified frequency while holding the key.
+	 */
 	class HoldForContinuouslyClick {
-		__New(key, interval, pressTime := 50) {
+		/**
+		 * @param interval The interval between two clicks. Default is 250ms.
+		 * @param pressTime The time the key will be hold for a press. Default is 50ms.
+		 */
+		__New(key, interval := 250, pressTime := 50) {
 			this.Key := key
 			this.Interval := interval
 			this.PressTime := pressTime
@@ -77,9 +96,16 @@ class Functionality {
 		}
 	}
 
+	/**
+	 * Press the original key for the first time it is clicked, and press a secondary key when double clicked.
+	 */
 	class DoubleClickSecondaryKey {
 		lastPressedTime := Map()
 
+		/**
+		 * @param altKey The secondary key to press when double clicked.
+		 * @param timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
+		 */
 		__New(key, altKey, timeout := 200) {
 			this.Key := key
 			this.AltKey := altKey
