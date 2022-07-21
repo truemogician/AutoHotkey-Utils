@@ -127,11 +127,9 @@ class Functionality {
 					SendInput("{" this.Key "}")
 				else {
 					SendInput("{" this.Key " Down}")
-					lgr.Log(this.Key " Down")
 					Functionality.fPressed[this.Key] := true
 					Sleep(this.PressTime)
 					SendInput("{" this.Key " Up}")
-					lgr.Log(this.Key " Up")
 					Functionality.fPressed[this.Key] := false
 				}
 			}
