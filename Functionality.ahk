@@ -118,7 +118,9 @@ class Functionality {
 			if (Functionality.pPressed[this.Key])
 				return
 			Functionality.pPressed[this.Key] := true
-			timerFunction() {
+			SendInput("{" this.Key " Down}")
+			Functionality.fPressed[this.Key] := true
+			clickContinuously() {
 				if (Functionality.pPressed[this.Key] = false) {
 					SetTimer(, 0)
 					return
@@ -133,11 +135,22 @@ class Functionality {
 					Functionality.fPressed[this.Key] := false
 				}
 			}
-			SetTimer(timerFunction, this.Interval)
+			startTimer() {
+				if (!Functionality.pPressed[this.key])
+					return
+				SendInput("{" this.Key " Up}")
+				Functionality.fPressed[this.Key] := false
+				SetTimer(clickContinuously, this.Interval)
+			}
+			SetTimer(startTimer, -this.Interval)
 		}
 
 		Up() {
 			Functionality.pPressed[this.Key] := false
+			if (Functionality.fPressed[this.Key]) {
+				SendInput("{" this.Key " Up}")
+				Functionality.fPressed[this.Key] := false
+			}
 		}
 	}
 
