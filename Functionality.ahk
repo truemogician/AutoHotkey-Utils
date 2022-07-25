@@ -15,6 +15,23 @@ class Functionality {
 	}
 
 	/**
+	 * Perform the original action and record the key status.
+	 */
+	class Record {
+		static Down(key) {
+			Functionality.pPressed[key] := true
+			SendInput("{" key " Down}")
+			Functionality.fPressed[key] := true
+		}
+
+		static Up(key) {
+			Functionality.pPressed[key] := false
+			SendInput("{" key " Up}")
+			Functionality.fPressed[key] := false
+		}
+	}
+
+	/**
 	 * In many games, the player needs to hold down a key to perform an action.
 	 * If the action lasts long enough, it would be a pain for fingers.
 	 * This class would transfer quick click to toggling, while still preserve the original mode for long hold.
