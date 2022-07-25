@@ -51,7 +51,7 @@ class Functionality {
 			if (!Functionality.fPressed[this.Key]) {
 				SendInput("{" this.Key " Down}")
 				Functionality.fPressed[this.Key] := true
-				Functionality.lastPressedTime := A_TickCount
+				Functionality.lastPressedTime[this.Key] := A_TickCount
 			}
 		}
 
@@ -60,7 +60,7 @@ class Functionality {
 			if (A_TickCount - Functionality.lastPressedTime[this.Key] > this.Threshold) {
 				SendInput("{" this.Key " Up}")
 				Functionality.fPressed[this.Key] := false
-				Functionality.lastPressedTime := 0
+				Functionality.lastPressedTime[this.Key] := 0
 			}
 		}
 	}
