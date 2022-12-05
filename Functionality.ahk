@@ -129,52 +129,61 @@ class Functionality {
 	 */
 	class HoldForContinuouslyClick {
 		/**
+		 * @param key The key that triggers this action
+		 * @param targetKey The key to be continuously clicked when holding `key`. Default is the same as `key`.
 		 * @param interval The interval between two clicks. Default is 250ms.
 		 * @param pressTime The time the key will be hold for a press. Default is 50ms.
 		 */
-		__New(key, interval := 250, pressTime := 50) {
+		__New(key, targetKey := key, interval := 250, pressTime := 50) {
 			this.Key := key
+			this.TargetKey := targetKey
 			this.Interval := interval
 			this.PressTime := pressTime
 			Functionality.Initialize(key)
+			Functionality.Initialize(targetKey)
 		}
 
 		Down() {
 			if (Functionality.pPressed[this.Key])
 				return
 			Functionality.pPressed[this.Key] := true
-			SendInput("{" this.Key " Down}")
-			Functionality.fPressed[this.Key] := true
 			clickContinuously() {
 				if (Functionality.pPressed[this.Key] = false) {
 					SetTimer(, 0)
 					return
 				}
 				if (this.PressTime <= 0)
-					SendInput("{" this.Key "}")
+					SendInput("{" this.TargetKey "}")
 				else {
-					SendInput("{" this.Key " Down}")
-					Functionality.fPressed[this.Key] := true
+					SendInput("{" this.TargetKey " Down}")
+					Functionality.fPressed[this.TargetKey] := true
 					Sleep(this.PressTime)
-					SendInput("{" this.Key " Up}")
-					Functionality.fPressed[this.Key] := false
+					SendInput("{" this.TargetKey " Up}")
+					Functionality.fPressed[this.TargetKey] := false
 				}
 			}
-			startTimer() {
-				if (!Functionality.pPressed[this.key])
-					return
-				SendInput("{" this.Key " Up}")
-				Functionality.fPressed[this.Key] := false
+			if (this.Key = this.TargetKey) {
+				SendInput("{" this.TargetKey " Down}")
+				Functionality.fPressed[this.TargetKey] := true
+				startTimer() {
+					if (!Functionality.pPressed[this.Key])
+						return
+					SendInput("{" this.TargetKey " Up}")
+					Functionality.fPressed[this.TargetKey] := false
+					SetTimer(clickContinuously, this.Interval)
+				}
+				SetTimer(startTimer, -this.Interval)
+			}
+			else {
 				SetTimer(clickContinuously, this.Interval)
 			}
-			SetTimer(startTimer, -this.Interval)
 		}
 
 		Up() {
 			Functionality.pPressed[this.Key] := false
-			if (Functionality.fPressed[this.Key]) {
-				SendInput("{" this.Key " Up}")
-				Functionality.fPressed[this.Key] := false
+			if (Functionality.fPressed[this.TargetKey]) {
+				SendInput("{" this.TargetKey " Up}")
+				Functionality.fPressed[this.TargetKey] := false
 			}
 		}
 	}
