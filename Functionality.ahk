@@ -18,14 +18,22 @@ class Functionality {
 	 * Perform the original action and record the key status.
 	 */
 	class Record {
-		static Down(key) {
-			Functionality.pPressed[key] := true
+		/**
+		 * @param physical Whether the key is physically pressed. Default is false.
+		 */
+		static Down(key, physical := false) {
+			if (physical)
+				Functionality.pPressed[key] := true
 			SendInput("{" key " Down}")
 			Functionality.fPressed[key] := true
 		}
 
-		static Up(key) {
-			Functionality.pPressed[key] := false
+		/**
+		 * @param physical Whether the key is physically pressed. Default is false.
+		 */
+		static Up(key, physical := false) {
+			if (physical)
+				Functionality.pPressed[key] := false
 			SendInput("{" key " Up}")
 			Functionality.fPressed[key] := false
 		}
