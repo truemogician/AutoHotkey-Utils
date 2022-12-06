@@ -3,11 +3,8 @@
  */
 class Functionality {
 	static fPressed := Map()
-
 	static pPressed := Map()
-
 	static lastPressedTime := Map()
-
 	static Initialize(key) {
 		Functionality.fPressed[key] := false
 		Functionality.pPressed[key] := false
@@ -24,7 +21,7 @@ class Functionality {
 		static Down(key, physical := false) {
 			if (physical)
 				Functionality.pPressed[key] := true
-			SendInput("{" key " Down}")
+			Send("{" key " Down}")
 			Functionality.fPressed[key] := true
 		}
 
@@ -34,7 +31,7 @@ class Functionality {
 		static Up(key, physical := false) {
 			if (physical)
 				Functionality.pPressed[key] := false
-			SendInput("{" key " Up}")
+			Send("{" key " Up}")
 			Functionality.fPressed[key] := false
 		}
 	}
@@ -57,7 +54,7 @@ class Functionality {
 		Down() {
 			Functionality.pPressed[this.Key] := true
 			if (!Functionality.fPressed[this.Key]) {
-				SendInput("{" this.Key " Down}")
+				Send("{" this.Key " Down}")
 				Functionality.fPressed[this.Key] := true
 				Functionality.lastPressedTime[this.Key] := A_TickCount
 			}
@@ -66,7 +63,7 @@ class Functionality {
 		Up() {
 			Functionality.pPressed[this.Key] := false
 			if (A_TickCount - Functionality.lastPressedTime[this.Key] > this.Threshold) {
-				SendInput("{" this.Key " Up}")
+				Send("{" this.Key " Up}")
 				Functionality.fPressed[this.Key] := false
 				Functionality.lastPressedTime[this.Key] := 0
 			}
@@ -95,11 +92,11 @@ class Functionality {
 			if (Functionality.pPressed[this.Key])
 				return
 			Functionality.pPressed[this.Key] := true
-			SendInput("{" this.Key " Down}")
+			Send("{" this.Key " Down}")
 			Functionality.fPressed[this.Key] := true
 			timerFunction() {
 				if (Functionality.pPressed[this.Key]) {
-					SendInput("{" this.Key " Up}")
+					Send("{" this.Key " Up}")
 					Functionality.fPressed[this.Key] := false
 				}
 			}
@@ -109,15 +106,15 @@ class Functionality {
 		Up() {
 			Functionality.pPressed[this.Key] := false
 			if (Functionality.fPressed[this.Key]) {
-				SendInput("{" this.Key " Up}")
+				Send("{" this.Key " Up}")
 				Functionality.fPressed[this.Key] := false
 			} else if (this.PressTime <= 0) {
-				SendInput("{" this.Key "}")
+				Send("{" this.Key "}")
 			} else {
-				SendInput("{" this.Key " Down}")
+				Send("{" this.Key " Down}")
 				Functionality.fPressed[this.Key] := true
 				Sleep(this.PressTime)
-				SendInput("{" this.Key " Up}")
+				Send("{" this.Key " Up}")
 				Functionality.fPressed[this.Key] := false
 			}
 		}
@@ -153,22 +150,22 @@ class Functionality {
 					return
 				}
 				if (this.PressTime <= 0)
-					SendInput("{" this.TargetKey "}")
+					Send("{" this.TargetKey "}")
 				else {
-					SendInput("{" this.TargetKey " Down}")
+					Send("{" this.TargetKey " Down}")
 					Functionality.fPressed[this.TargetKey] := true
 					Sleep(this.PressTime)
-					SendInput("{" this.TargetKey " Up}")
+					Send("{" this.TargetKey " Up}")
 					Functionality.fPressed[this.TargetKey] := false
 				}
 			}
 			if (this.Key = this.TargetKey) {
-				SendInput("{" this.TargetKey " Down}")
+				Send("{" this.TargetKey " Down}")
 				Functionality.fPressed[this.TargetKey] := true
 				startTimer() {
 					if (!Functionality.pPressed[this.Key])
 						return
-					SendInput("{" this.TargetKey " Up}")
+					Send("{" this.TargetKey " Up}")
 					Functionality.fPressed[this.TargetKey] := false
 					SetTimer(clickContinuously, this.Interval)
 				}
@@ -182,7 +179,7 @@ class Functionality {
 		Up() {
 			Functionality.pPressed[this.Key] := false
 			if (Functionality.fPressed[this.TargetKey]) {
-				SendInput("{" this.TargetKey " Up}")
+				Send("{" this.TargetKey " Up}")
 				Functionality.fPressed[this.TargetKey] := false
 			}
 		}
@@ -205,16 +202,16 @@ class Functionality {
 
 		Down() {
 			if (Functionality.pPressed[this.Key]) {
-				SendInput("{" this.Key " Down}")
+				Send("{" this.Key " Down}")
 				return
 			}
 			local last := Functionality.lastPressedTime.Has(this.Key) ? Functionality.lastPressedTime[this.Key] : 0
 			if (A_TickCount - last > this.Timeout) {
-				SendInput("{" this.Key " Down}")
+				Send("{" this.Key " Down}")
 				Functionality.pPressed[this.Key] := true
 				Functionality.lastPressedTime[this.Key] := A_TickCount
 			} else {
-				SendInput("{" this.AltKey " Down}")
+				Send("{" this.AltKey " Down}")
 				Functionality.pPressed[this.AltKey] := true
 				Functionality.lastPressedTime[this.Key] := 0
 			}
@@ -222,7 +219,7 @@ class Functionality {
 
 		Up() {
 			local cur := Functionality.pPressed[this.Key] ? this.Key : this.AltKey
-			SendInput("{" cur " Up}")
+			Send("{" cur " Up}")
 			Functionality.pPressed[cur] := false
 		}
 	}
