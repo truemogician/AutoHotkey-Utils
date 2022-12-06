@@ -1,16 +1,83 @@
 /**
+ * A static class storing and mapping the logical and physical states of keys.
+ */
+class KeyState {
+	/**
+	 * A readonly mapping of the physical states of keys using `GetKeyState` with `P` mode.
+	 */
+	class Physical {
+		static __Item[key] => GetKeyState(key, "P")
+	}
+
+	/**
+	 * A static class storing and mapping the logical state of keys.
+	 * 
+	 * When `UseSystemState` is `true`, the states are mapped from `GetKeyState`;
+	 * otherwize, they are managed by the class itself.
+	 */
+	class Logical {
+		static __Map := Map()
+		static __LastPressedTimeMap := Map()
+		static __LastReleasedTimeMap := Map()
+		/**
+		 * Whether to use the `GetKeyState` to retrieve the logical states of keys. Default is `true`.
+		 */
+		static UseSystemState := true
+		static __Item[key] {
+			get => this.UseSystemState ? GetKeyState(key) : this.__Map.Has(key) ? this.__Map[key] : false
+			set {
+				if (!this.UseSystemState)
+					this.__Map[key] := value
+			}
+		}
+		/**
+		 * A map recording the last pressed time of keys.
+		 */
+		static LastPressedTime => this.__LastPressedTimeMap
+		/**
+		 * A map recording the last released time of keys.
+		 */
+		static LastReleasedTime => this.__LastReleasedTimeMap
+
+		static Initialize(key) {
+			if (!this.UseSystemState)
+				this.__Map[key] := false
+			this.__LastPressedTimeMap[key] := 0
+			this.__LastReleasedTimeMap[key] := 0
+		}
+	}
+
+	static Initialize(key) => this.Logical.Initialize(key)
+
+	static Press(key, recordTime := false) {
+		Send("{" key " Down}")
+		this.Logical[key] := true
+		if (recordTime)
+			this.Logical.LastPressedTime[key] := A_TickCount
+	}
+
+	static Release(key, recordTime := false) {
+		Send("{" key " Up}")
+		this.Logical[key] := false
+		if (recordTime)
+			this.Logical.LastReleasedTime[key] := A_TickCount
+	}
+
+	static Click(key, holdTime := 50, recordTime := false) {
+		if (holdTime <= 0)
+			Send(key)
+		else {
+			this.Press(key, recordTime)
+			Sleep(holdTime)
+			this.Release(key, recordTime)
+		}
+	}
+}
+
+/**
  * Some common useful functionality for games. To use, instantiate a sub class, then bind the `Down` and `Up` methods to corresponding keys.
  */
 class Functionality {
-	static fPressed := Map()
-	static pPressed := Map()
-	static lastPressedTime := Map()
-	static Initialize(key) {
-		Functionality.fPressed[key] := false
-		Functionality.pPressed[key] := false
-		Functionality.lastPressedTime[key] := 0
-	}
-
 	/**
 	 * Perform the original action and record the key status.
 	 */
@@ -20,12 +87,12 @@ class Functionality {
 		 * @param physical Whether the key is physically pressed. Default is false.
 		 * @param noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
 		 */
-		__New(key, physical := false, noRepeat := false) {
+		__New(key, recordTime := false, noRepeat := false) {
 			this.Key := key
-			this.Physical := physical
+			this.RecordTime := recordTime
 			this.NoRepeat := noRepeat
 			this.__Triggered := false
-			Functionality.Initialize(key)
+			KeyState.Initialize(key)
 		}
 
 		/**
@@ -34,19 +101,13 @@ class Functionality {
 		Down() {
 			if (this.NoRepeat && this.__Triggered)
 				return false
-			if (this.Physical)
-				Functionality.pPressed[this.Key] := true
-			Send("{" this.Key " Down}")
-			Functionality.fPressed[this.Key] := true
+			KeyState.Press(this.Key, this.RecordTime)
 			this.__Triggered := true
 			return true
 		}
 
 		Up() {
-			if (this.Physical)
-				Functionality.pPressed[this.Key] := false
-			Send("{" this.Key " Up}")
-			Functionality.fPressed[this.Key] := false
+			KeyState.Release(this.Key)
 			this.__Triggered := false
 		}
 	}
@@ -63,25 +124,19 @@ class Functionality {
 		__New(key, threshold := 200) {
 			this.Key := key
 			this.Threshold := threshold
-			Functionality.Initialize(key)
+			KeyState.Initialize(key)
 		}
 
 		Down() {
-			Functionality.pPressed[this.Key] := true
-			if (!Functionality.fPressed[this.Key]) {
-				Send("{" this.Key " Down}")
-				Functionality.fPressed[this.Key] := true
-				Functionality.lastPressedTime[this.Key] := A_TickCount
-			}
+			if (KeyState.Physical[this.Key])
+				return
+			if (!KeyState.Logical[this.Key])
+				KeyState.Press(this.Key, true)
 		}
 
 		Up() {
-			Functionality.pPressed[this.Key] := false
-			if (A_TickCount - Functionality.lastPressedTime[this.Key] > this.Threshold) {
-				Send("{" this.Key " Up}")
-				Functionality.fPressed[this.Key] := false
-				Functionality.lastPressedTime[this.Key] := 0
-			}
+			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold)
+				KeyState.Release(this.Key)
 		}
 	}
 
@@ -100,38 +155,25 @@ class Functionality {
 			this.Key := key
 			this.Threshold := threshold
 			this.PressTime := pressTime
-			Functionality.Initialize(key)
+			KeyState.Initialize(key)
 		}
 
 		Down() {
-			if (Functionality.pPressed[this.Key])
+			if (KeyState.Physical[this.Key])
 				return
-			Functionality.pPressed[this.Key] := true
-			Send("{" this.Key " Down}")
-			Functionality.fPressed[this.Key] := true
+			KeyState.Press(this.Key)
 			timerFunction() {
-				if (Functionality.pPressed[this.Key]) {
-					Send("{" this.Key " Up}")
-					Functionality.fPressed[this.Key] := false
-				}
+				if (KeyState.Physical[this.Key])
+					KeyState.Release(this.Key)
 			}
 			SetTimer(timerFunction, -this.Threshold)
 		}
 
 		Up() {
-			Functionality.pPressed[this.Key] := false
-			if (Functionality.fPressed[this.Key]) {
-				Send("{" this.Key " Up}")
-				Functionality.fPressed[this.Key] := false
-			} else if (this.PressTime <= 0) {
-				Send("{" this.Key "}")
-			} else {
-				Send("{" this.Key " Down}")
-				Functionality.fPressed[this.Key] := true
-				Sleep(this.PressTime)
-				Send("{" this.Key " Up}")
-				Functionality.fPressed[this.Key] := false
-			}
+			if (KeyState.Logical[this.Key])
+				KeyState.Release(this.Key)
+			else
+				KeyState.Click(this.Key, this.PressTime)
 		}
 	}
 
@@ -151,52 +193,37 @@ class Functionality {
 			this.TargetKey := targetKey
 			this.Interval := interval
 			this.PressTime := pressTime
-			Functionality.Initialize(key)
-			Functionality.Initialize(targetKey)
+			KeyState.Initialize(key)
+			KeyState.Initialize(targetKey)
 		}
 
 		Down() {
-			if (Functionality.pPressed[this.Key])
+			if (KeyState.Physical[this.Key])
 				return
-			Functionality.pPressed[this.Key] := true
-			clickContinuously() {
-				if (Functionality.pPressed[this.Key] = false) {
+			timerFunc() {
+				if (!KeyState.Physical[this.Key]) {
 					SetTimer(, 0)
 					return
 				}
-				if (this.PressTime <= 0)
-					Send("{" this.TargetKey "}")
-				else {
-					Send("{" this.TargetKey " Down}")
-					Functionality.fPressed[this.TargetKey] := true
-					Sleep(this.PressTime)
-					Send("{" this.TargetKey " Up}")
-					Functionality.fPressed[this.TargetKey] := false
-				}
+				KeyState.Click(this.TargetKey, this.PressTime)
 			}
-			if (this.Key = this.TargetKey) {
-				Send("{" this.TargetKey " Down}")
-				Functionality.fPressed[this.TargetKey] := true
+			if (this.Key != this.TargetKey)
+				SetTimer(timerFunc, this.Interval)
+			else {
+				KeyState.Press(this.TargetKey)
 				startTimer() {
-					if (!Functionality.pPressed[this.Key])
+					if (!KeyState.Physical[this.Key])
 						return
-					Send("{" this.TargetKey " Up}")
-					Functionality.fPressed[this.TargetKey] := false
-					SetTimer(clickContinuously, this.Interval)
+					KeyState.Release(this.TargetKey)
+					SetTimer(timerFunc, this.Interval)
 				}
 				SetTimer(startTimer, -this.Interval)
-			}
-			else {
-				SetTimer(clickContinuously, this.Interval)
 			}
 		}
 
 		Up() {
-			Functionality.pPressed[this.Key] := false
-			if (Functionality.fPressed[this.TargetKey]) {
-				Send("{" this.TargetKey " Up}")
-				Functionality.fPressed[this.TargetKey] := false
-			}
+			if (KeyState.Logical[this.TargetKey])
+				KeyState.Release(this.TargetKey)
 		}
 	}
 
@@ -212,30 +239,26 @@ class Functionality {
 			this.Key := key
 			this.AltKey := altKey
 			this.Timeout := timeout
-			Functionality.Initialize(key)
+			this.__AltKeyPressed := false
+			KeyState.Initialize(key)
+			KeyState.Initialize(altKey)
 		}
 
 		Down() {
-			if (Functionality.pPressed[this.Key]) {
-				Send("{" this.Key " Down}")
+			if (KeyState.Physical[this.Key])
 				return
+			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Timeout) {
+				KeyState.Press(this.Key, true)
+				this.__AltKeyPressed := false
 			}
-			local last := Functionality.lastPressedTime.Has(this.Key) ? Functionality.lastPressedTime[this.Key] : 0
-			if (A_TickCount - last > this.Timeout) {
-				Send("{" this.Key " Down}")
-				Functionality.pPressed[this.Key] := true
-				Functionality.lastPressedTime[this.Key] := A_TickCount
-			} else {
-				Send("{" this.AltKey " Down}")
-				Functionality.pPressed[this.AltKey] := true
-				Functionality.lastPressedTime[this.Key] := 0
+			else {
+				KeyState.Press(this.AltKey)
+				this.__AltKeyPressed := true
 			}
 		}
 
 		Up() {
-			local cur := Functionality.pPressed[this.Key] ? this.Key : this.AltKey
-			Send("{" cur " Up}")
-			Functionality.pPressed[cur] := false
+			KeyState.Release(this.__AltKeyPressed ? this.AltKey : this.Key)
 		}
 	}
 }
