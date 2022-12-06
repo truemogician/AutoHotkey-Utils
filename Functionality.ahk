@@ -16,23 +16,38 @@ class Functionality {
 	 */
 	class Record {
 		/**
+		 * @param key The key to record and perform the original action.
 		 * @param physical Whether the key is physically pressed. Default is false.
+		 * @param noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
 		 */
-		static Down(key, physical := false) {
-			if (physical)
-				Functionality.pPressed[key] := true
-			Send("{" key " Down}")
-			Functionality.fPressed[key] := true
+		__New(key, physical := false, noRepeat := false) {
+			this.Key := key
+			this.Physical := physical
+			this.NoRepeat := noRepeat
+			this.__Triggered := false
+			Functionality.Initialize(key)
 		}
 
 		/**
-		 * @param physical Whether the key is physically pressed. Default is false.
+		 * @return Whether the action is performed. Only false when `NoRepeat` is true and the event has already been triggered.
 		 */
-		static Up(key, physical := false) {
-			if (physical)
-				Functionality.pPressed[key] := false
-			Send("{" key " Up}")
-			Functionality.fPressed[key] := false
+		Down() {
+			if (this.NoRepeat && this.__Triggered)
+				return false
+			if (this.Physical)
+				Functionality.pPressed[this.Key] := true
+			Send("{" this.Key " Down}")
+			Functionality.fPressed[this.Key] := true
+			this.__Triggered := true
+			return true
+		}
+
+		Up() {
+			if (this.Physical)
+				Functionality.pPressed[this.Key] := false
+			Send("{" this.Key " Up}")
+			Functionality.fPressed[this.Key] := false
+			this.__Triggered := false
 		}
 	}
 
