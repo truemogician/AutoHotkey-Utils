@@ -261,4 +261,34 @@ class Functionality {
 			KeyState.Release(this.__AltKeyPressed ? this.AltKey : this.Key)
 		}
 	}
+
+	/**
+	 * Click one key and trigger some other keys at the same time.
+	 */
+	class OneToMany {
+		/**
+		 * @param otherKeys The keys to be triggered at the same time.
+		 */
+		__New(key, otherKeys*) {
+			this.Key := key
+			this.OtherKeys := otherKeys
+			KeyState.Initialize(key)
+			for (otherKey in otherKeys)
+				KeyState.Initialize(otherKey)
+		}
+
+		Down() {
+			if (KeyState.Physical[this.Key])
+				return
+			KeyState.Press(this.Key)
+			for (otherKey in this.OtherKeys)
+				KeyState.Press(otherKey)
+		}
+
+		Up() {
+			KeyState.Release(this.Key)
+			for (otherKey in this.OtherKeys)
+				KeyState.Release(otherKey)
+		}
+	}
 }
