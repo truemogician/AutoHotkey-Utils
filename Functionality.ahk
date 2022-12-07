@@ -124,17 +124,20 @@ class Functionality {
 		__New(key, threshold := 200) {
 			this.Key := key
 			this.Threshold := threshold
+			this.__Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
-			if (KeyState.Physical[this.Key])
+			if (this.__Triggered)
 				return
+			this.__Triggered := true
 			if (!KeyState.Logical[this.Key])
 				KeyState.Press(this.Key, true)
 		}
 
 		Up() {
+			this.__Triggered := false
 			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold)
 				KeyState.Release(this.Key)
 		}
@@ -155,12 +158,14 @@ class Functionality {
 			this.Key := key
 			this.Threshold := threshold
 			this.PressTime := pressTime
+			this.__Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
-			if (KeyState.Physical[this.Key])
+			if (this.__Triggered)
 				return
+			this.__Triggered := true
 			KeyState.Press(this.Key)
 			timerFunction() {
 				if (KeyState.Physical[this.Key])
@@ -170,6 +175,7 @@ class Functionality {
 		}
 
 		Up() {
+			this.__Triggered := false
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
 			else
@@ -193,13 +199,15 @@ class Functionality {
 			this.TargetKey := targetKey
 			this.Interval := interval
 			this.PressTime := pressTime
+			this.__Triggered := false
 			KeyState.Initialize(key)
 			KeyState.Initialize(targetKey)
 		}
 
 		Down() {
-			if (KeyState.Physical[this.Key])
+			if (this.__Triggered)
 				return
+			this.__Triggered := true
 			timerFunc() {
 				if (!KeyState.Physical[this.Key]) {
 					SetTimer(, 0)
@@ -222,6 +230,7 @@ class Functionality {
 		}
 
 		Up() {
+			this.__Triggered := false
 			if (KeyState.Logical[this.TargetKey])
 				KeyState.Release(this.TargetKey)
 		}
@@ -239,14 +248,16 @@ class Functionality {
 			this.Key := key
 			this.AltKey := altKey
 			this.Timeout := timeout
+			this.__Triggered := false
 			this.__AltKeyPressed := false
 			KeyState.Initialize(key)
 			KeyState.Initialize(altKey)
 		}
 
 		Down() {
-			if (KeyState.Physical[this.Key])
+			if (this.__Triggered)
 				return
+			this.__Triggered := true
 			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Timeout) {
 				KeyState.Press(this.Key, true)
 				this.__AltKeyPressed := false
@@ -258,6 +269,7 @@ class Functionality {
 		}
 
 		Up() {
+			this.__Triggered := false
 			KeyState.Release(this.__AltKeyPressed ? this.AltKey : this.Key)
 		}
 	}
@@ -272,20 +284,23 @@ class Functionality {
 		__New(key, otherKeys*) {
 			this.Key := key
 			this.OtherKeys := otherKeys
+			this.__Triggered := false
 			KeyState.Initialize(key)
 			for (otherKey in otherKeys)
 				KeyState.Initialize(otherKey)
 		}
 
 		Down() {
-			if (KeyState.Physical[this.Key])
+			if (this.__Triggered)
 				return
+			this.__Triggered := true
 			KeyState.Press(this.Key)
 			for (otherKey in this.OtherKeys)
 				KeyState.Press(otherKey)
 		}
 
 		Up() {
+			this.__Triggered := false
 			KeyState.Release(this.Key)
 			for (otherKey in this.OtherKeys)
 				KeyState.Release(otherKey)
