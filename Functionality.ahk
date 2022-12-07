@@ -153,13 +153,18 @@ class Functionality {
 		/**
 		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 * @param pressTime The time the key will be hold for a click. Default is 50ms.
+		 * @param physicalKey This operation relys on key's physical state.
+		 * If the action is triggered by a different key, specify it here. Default is the same as `key`.
 		 */
-		__New(key, threshold := 200, pressTime := 50) {
+		__New(key, threshold := 200, pressTime := 50, physicalKey := key) {
 			this.Key := key
 			this.Threshold := threshold
 			this.PressTime := pressTime
+			this.PhysicalKey := physicalKey
 			this.__Triggered := false
 			KeyState.Initialize(key)
+			if (key != physicalKey)
+				KeyState.Initialize(physicalKey)
 		}
 
 		Down() {
@@ -168,7 +173,7 @@ class Functionality {
 			this.__Triggered := true
 			KeyState.Press(this.Key)
 			timerFunction() {
-				if (KeyState.Physical[this.Key])
+				if (KeyState.Physical[this.PhysicalKey])
 					KeyState.Release(this.Key)
 			}
 			SetTimer(timerFunction, -this.Threshold)
