@@ -192,7 +192,7 @@ class Functionality {
 	 * In some situations, the player needs to click a key continuously, which is exhausting.
 	 * This class allows you to perform such action at a specified frequency while holding the key.
 	 */
-	class HoldForContinuouslyClick {
+	class HoldForContinuousClick {
 		/**
 		 * @param key The key that triggers this action
 		 * @param targetKey The key to be continuously clicked when holding `key`. Default is the same as `key`.
@@ -209,16 +209,22 @@ class Functionality {
 			KeyState.Initialize(targetKey)
 		}
 
+		/**
+		 * Oscillation for press time, should be within [0, 1). Default is 0.
+		 * @note A fixed press time may rouse suspicion, so using oscillation is recommended.
+		 */
+		Oscillation := 0
 		Down() {
 			if (this.__Triggered)
 				return
 			this.__Triggered := true
 			timerFunc() {
-				if (!KeyState.Physical[this.Key]) {
+				if (!KeyState.Physical[this.Key])
 					SetTimer(, 0)
-					return
+				else {
+					local pressTime := Round(this.PressTime * Random(1 - this.Oscillation, 1 + this.Oscillation))
+					KeyState.Click(this.TargetKey, pressTime)
 				}
-				KeyState.Click(this.TargetKey, this.PressTime)
 			}
 			if (this.Key != this.TargetKey)
 				SetTimer(timerFunc, this.Interval)
