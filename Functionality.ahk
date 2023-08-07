@@ -248,19 +248,25 @@ class Functionality {
 	}
 
 	/**
-	 * Press the original key for the first time it is clicked, and press a secondary key when double clicked.
+	 * Trigger a secondary key when double clicked.
 	 */
 	class DoubleClickSecondaryKey {
 		/**
 		 * @param altKey The secondary key to press when double clicked.
+		 * @param mode The reaction mode for the secondary key. Default is `"replace"`.
+		 * - `"replace"`: Only the secondary key will be pressed and released during the second click.
+		 * - `"concur"`: Both the original and secondary key will be pressed and released during the second click.
+		 * - `"press"`: The secondary key will be clicked at the press moment of the second click.
+		 * - `"release"`: The secondary key will be clicked at the release moment of the second click.
 		 * @param timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
 		 */
-		__New(key, altKey, timeout := 200) {
+		__New(key, altKey, timeout := 200, mode := "replace") {
 			this.Key := key
 			this.AltKey := altKey
 			this.Timeout := timeout
+			this.Mode := mode
 			this.__Triggered := false
-			this.__AltKeyPressed := false
+			this.__AltKeyTriggered := false
 			KeyState.Initialize(key)
 			KeyState.Initialize(altKey)
 		}
@@ -271,17 +277,29 @@ class Functionality {
 			this.__Triggered := true
 			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Timeout) {
 				KeyState.Press(this.Key, true)
-				this.__AltKeyPressed := false
+				this.__AltKeyTriggered := false
 			}
 			else {
-				KeyState.Press(this.AltKey)
-				this.__AltKeyPressed := true
+				this.__AltKeyTriggered := true
+				if (this.Mode == "replace" || this.Mode == "concur")
+					KeyState.Press(this.AltKey)
+				else if (this.Mode == "press")
+					KeyState.Click(this.AltKey)
+				if (this.Mode != "replace")
+					KeyState.Press(this.Key, true)
 			}
 		}
 
 		Up() {
 			this.__Triggered := false
-			KeyState.Release(this.__AltKeyPressed ? this.AltKey : this.Key)
+			if (this.__AltKeyTriggered) {
+				if (this.mode == "replace" || this.mode == "concur")
+					KeyState.Release(this.AltKey)
+				else if (this.mode == "release")
+					KeyState.Click(this.AltKey)
+			}
+			if (!this.__AltKeyTriggered || this.Mode != "replace")
+				KeyState.Release(this.Key)
 		}
 	}
 
