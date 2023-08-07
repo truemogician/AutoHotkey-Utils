@@ -84,7 +84,7 @@ class Functionality {
 	class Record {
 		/**
 		 * @param key The key to record and perform the original action.
-		 * @param physical Whether the key is physically pressed. Default is false.
+		 * @param recordTime Whether to record the pressed and released time of the key.
 		 * @param noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
 		 */
 		__New(key, recordTime := false, noRepeat := false) {
