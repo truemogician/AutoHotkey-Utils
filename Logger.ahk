@@ -1,21 +1,21 @@
 class Logger {
 	__New(filePath := "") {
 		this.FilePath := filePath
-		this.file := FileOpen(filePath, FileExist(filePath) ? "a" : "w")
+		this.__File := FileOpen(filePath, FileExist(filePath) ? "a" : "w")
 	}
 
 	__Delete() {
-		this.file.Close()
+		this.__File.Close()
 	}
 
 	Log(message) {
-		this.file.Write("[" FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss.") A_MSec "] " message "`n")
-		handle := this.file.Handle
+		this.__File.Write("[" FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss.") A_MSec "] " message "`n")
+		handle := this.__File.Handle
 	}
 
 	Clear() {
-		this.file.Close()
-		this.file := FileOpen(this.FilePath, "w")
-		this.file.Write("")
+		this.__File.Close()
+		this.__File := FileOpen(this.FilePath, "w")
+		this.__File.Write("")
 	}
 }
