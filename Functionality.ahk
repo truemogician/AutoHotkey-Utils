@@ -1,3 +1,5 @@
+#Include "./Logger.ahk"
+
 /**
  * A static class storing and mapping the logical and physical states of keys.
  */
@@ -17,6 +19,7 @@ class KeyState {
 	 */
 	class Logical {
 		static __Map := Map()
+		static __Logger := ""
 		static __LastPressedTimeMap := Map()
 		static __LastReleasedTimeMap := Map()
 		/**
@@ -45,6 +48,12 @@ class KeyState {
 			this.__LastPressedTimeMap[key] := 0
 			this.__LastReleasedTimeMap[key] := 0
 		}
+		static EnableLogging(logFile) {
+			this.__Logger := Logger(logFile)
+		}
+		static DisableLogging() {
+			this.__Logger := ""
+		}
 	}
 
 	static Initialize(key) => this.Logical.Initialize(key)
@@ -54,6 +63,8 @@ class KeyState {
 		this.Logical[key] := true
 		if (recordTime)
 			this.Logical.LastPressedTime[key] := A_TickCount
+		if (this.Logical.__Logger != "")
+			this.Logical.__Logger.Log(key " ↓")
 	}
 
 	static Release(key, recordTime := false) {
@@ -61,11 +72,16 @@ class KeyState {
 		this.Logical[key] := false
 		if (recordTime)
 			this.Logical.LastReleasedTime[key] := A_TickCount
+		if (this.Logical.__Logger != "")
+			this.Logical.__Logger.Log(key " ↑")
 	}
 
 	static Click(key, holdTime := 50, recordTime := false) {
-		if (holdTime <= 0)
+		if (holdTime <= 0) {
 			Send(key)
+			if (this.Logical.__Logger != "")
+				this.Logical.__Logger.Log(key " ↓↑")
+		}
 		else {
 			this.Press(key, recordTime)
 			Sleep(holdTime)
