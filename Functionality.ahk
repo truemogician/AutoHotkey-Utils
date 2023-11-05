@@ -64,7 +64,7 @@ class KeyState {
 		if (recordTime)
 			this.Logical.LastPressedTime[key] := A_TickCount
 		if (this.Logical.__Logger != "")
-			this.Logical.__Logger.Log(key " ↓")
+			this.Logical.__Logger.Log(key " Pressed")
 	}
 
 	static Release(key, recordTime := false) {
@@ -73,14 +73,14 @@ class KeyState {
 		if (recordTime)
 			this.Logical.LastReleasedTime[key] := A_TickCount
 		if (this.Logical.__Logger != "")
-			this.Logical.__Logger.Log(key " ↑")
+			this.Logical.__Logger.Log(key " Released")
 	}
 
 	static Click(key, holdTime := 50, recordTime := false) {
 		if (holdTime <= 0) {
 			Send(key)
 			if (this.Logical.__Logger != "")
-				this.Logical.__Logger.Log(key " ↓↑")
+				this.Logical.__Logger.Log(key " Clicked")
 		}
 		else {
 			this.Press(key, recordTime)
@@ -227,9 +227,10 @@ class Functionality {
 
 		/**
 		 * Oscillation for press time, should be within [0, 1). Default is 0.
-		 * @note A fixed press time may rouse suspicion, so using oscillation is recommended.
+		 * @note A constant press time may rouse suspicion, so using oscillation is recommended.
 		 */
 		Oscillation := 0
+
 		Down() {
 			if (this.__Triggered)
 				return
