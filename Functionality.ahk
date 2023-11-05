@@ -352,4 +352,37 @@ class Functionality {
 				KeyState.Release(otherKey)
 		}
 	}
+
+	/**
+	 * Double click is a common problem for mice, which is often caused by dust or the oxidation of the mouseswitch.
+	 * While a more permanent solution is to replace the switch, this class provides a temporary solution by filtering out the second click.
+	 */
+	class FixDoubleClick {
+		/**
+		 * @param key The key with double click problem.
+		 * @param threshould The time threshold to distinguish anomalous double click. Default is 80ms.
+		 */
+		__New(key, threshould := 80) {
+			this.Key := key
+			this.Threshold := threshould
+			this.__Ignored := false
+			KeyState.Initialize(key)
+		}
+
+		Down() {
+			if (this.__Ignored)
+				return
+			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] <= this.Threshold)
+				this.__Ignored := true
+			else
+				KeyState.Press(this.Key, true)
+		}
+
+		Up() {
+			if (this.__Ignored)
+				this.__Ignored := false
+			else
+				KeyState.Release(this.Key)
+		}
+	}
 }
