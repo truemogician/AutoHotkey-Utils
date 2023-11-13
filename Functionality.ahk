@@ -169,18 +169,13 @@ class Functionality {
 		/**
 		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 * @param pressTime The time the key will be hold for a click. Default is 50ms.
-		 * @param physicalKey This operation relys on key's physical state.
-		 * If the action is triggered by a different key, specify it here. Default is the same as `key`.
 		 */
-		__New(key, threshold := 200, pressTime := 50, physicalKey := key) {
+		__New(key, threshold := 200, pressTime := 50) {
 			this.Key := key
 			this.Threshold := threshold
 			this.PressTime := pressTime
-			this.PhysicalKey := physicalKey
 			this.__Triggered := false
 			KeyState.Initialize(key)
-			if (key != physicalKey)
-				KeyState.Initialize(physicalKey)
 		}
 
 		Down() {
@@ -188,19 +183,19 @@ class Functionality {
 				return
 			this.__Triggered := true
 			KeyState.Press(this.Key)
-			timerFunction() {
-				if (KeyState.Physical[this.PhysicalKey])
+			timerFunc() {
+				if (this.__Triggered)
 					KeyState.Release(this.Key)
 			}
-			SetTimer(timerFunction, -this.Threshold)
+			SetTimer(timerFunc, -this.Threshold)
 		}
 
 		Up() {
-			this.__Triggered := false
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
 			else
 				KeyState.Click(this.Key, this.PressTime)
+			this.__Triggered := false
 		}
 	}
 
@@ -210,24 +205,21 @@ class Functionality {
 	 */
 	class HoldForContinuousClick {
 		/**
-		 * @param key The key that triggers this action
-		 * @param targetKey The key to be continuously clicked when holding `key`. Default is the same as `key`.
+		 * @param key The key to be continuously clicked.
 		 * @param interval The interval between two clicks. Default is 250ms.
 		 * @param pressTime The time the key will be hold for a press. Default is 50ms.
 		 */
-		__New(key, targetKey := key, interval := 250, pressTime := 50) {
+		__New(key, interval := 250, pressTime := 50) {
 			this.Key := key
-			this.TargetKey := targetKey
 			this.Interval := interval
 			this.PressTime := pressTime
 			this.__Triggered := false
 			KeyState.Initialize(key)
-			KeyState.Initialize(targetKey)
 		}
 
 		/**
-		 * Oscillation for press time, should be within [0, 1). Default is 0.
-		 * @note A constant press time may rouse suspicion, so using oscillation is recommended.
+		 * Oscillation for press time and interval, should be within [0, 1). Default is 0.
+		 * @note A constant press time and interval may rouse suspicion, so using oscillation is recommended.
 		 */
 		Oscillation := 0
 
@@ -236,31 +228,23 @@ class Functionality {
 				return
 			this.__Triggered := true
 			timerFunc() {
-				if (!KeyState.Physical[this.Key])
+				if (!this.__Triggered)
 					SetTimer(, 0)
+				else if (this.Oscillation == 0)
+					KeyState.Click(this.Key, this.PressTime)
 				else {
-					local pressTime := Round(this.PressTime * Random(1 - this.Oscillation, 1 + this.Oscillation))
-					KeyState.Click(this.TargetKey, pressTime)
+					KeyState.Click(this.Key, Round(this.PressTime * Random(1 - this.Oscillation, 1 + this.Oscillation)))
+					SetTimer(timerFunc, Round(this.Interval * Random(1 - this.Oscillation, 1 + this.Oscillation)))
 				}
 			}
-			if (this.Key != this.TargetKey)
-				SetTimer(timerFunc, this.Interval)
-			else {
-				KeyState.Press(this.TargetKey)
-				startTimer() {
-					if (!KeyState.Physical[this.Key])
-						return
-					KeyState.Release(this.TargetKey)
-					SetTimer(timerFunc, this.Interval)
-				}
-				SetTimer(startTimer, -this.Interval)
-			}
+			timerFunc()
+			SetTimer(timerFunc, this.Interval)
 		}
 
 		Up() {
+			if (KeyState.Logical[this.Key])
+				KeyState.Release(this.Key)
 			this.__Triggered := false
-			if (KeyState.Logical[this.TargetKey])
-				KeyState.Release(this.TargetKey)
 		}
 	}
 
