@@ -344,29 +344,72 @@ class Functionality {
 	class FixDoubleClick {
 		/**
 		 * @param key The key with double click problem.
-		 * @param threshould The time threshold to distinguish anomalous double click. Default is 80ms.
+		 * @param threshould The time threshold to distinguish anomalous double click. Default is 50ms.
 		 */
-		__New(key, threshould := 80) {
+		__New(key, threshold := 10, logFile := "") {
 			this.Key := key
-			this.Threshold := threshould
-			this.__Ignored := false
+			this.Threshold := threshold
+			this._PressIgnored := false
+			this._ReleaseIgnored := false
+			this._Window := ""
 			KeyState.Initialize(key)
+			if (logFile) {
+				this._Logger := Logger(logFile)
+				this._Count := 0
+				this._PressIgnoreCount := 0
+				this._ReleaseIgnoreCount := 0
+			}
 		}
 
 		Down() {
-			if (this.__Ignored)
+			if (this._PressIgnored)
 				return
-			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] <= this.Threshold)
-				this.__Ignored := true
-			else
+			if (this._ReleaseIgnored) {
+				this._ReleaseIgnored := false
+				return
+			}
+			interval := A_TickCount - KeyState.Logical.LastReleasedTime[this.Key]
+			try curWindow := WinGetID("A")
+			catch {
+				curWindow := ""
+			}
+			if (interval > this.Threshold || (curWindow != "" && curWindow != this._Window)) {
 				KeyState.Press(this.Key, true)
+				this._Window := curWindow
+			}
+			else {
+				this._PressIgnored := true
+				if (this._Logger) {
+					this._PressIgnoreCount++
+					this._Logger.Log(Format("Double Clicked during Release: {1} ms ({2:.2f}%, {3:.2f}%, {4})", interval, this._PressIgnoreCount / this._Count * 100, (this._PressIgnoreCount + this._ReleaseIgnoreCount) / this._Count * 100, this._Count))
+				}
+			}
 		}
 
 		Up() {
-			if (this.__Ignored)
-				this.__Ignored := false
-			else
-				KeyState.Release(this.Key)
+			if (this._ReleaseIgnored)
+				return
+			this._Count++
+			if (this._PressIgnored) {
+				this._PressIgnored := false
+				return
+			}
+			interval := A_TickCount - KeyState.Logical.LastPressedTime[this.Key]
+			try curWindow := WinGetID("A")
+			catch {
+				curWindow := ""
+			}
+			if (interval > this.Threshold || (curWindow != "" && curWindow != this._Window)) {
+				KeyState.Release(this.Key, true)
+				this._Window := curWindow
+			}
+			else {
+				this._ReleaseIgnored := true
+				if (this._Logger) {
+					this._ReleaseIgnoreCount++
+					this._Logger.Log(Format("Double Clicked during Press: {1} ms ({2:.2f}%, {3:.2f}%, {4})", interval, this._ReleaseIgnoreCount / this._Count * 100, (this._PressIgnoreCount + this._ReleaseIgnoreCount) / this._Count * 100, this._Count))
+				}
+			}
 		}
 	}
 }
