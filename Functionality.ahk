@@ -90,6 +90,11 @@ class KeyState {
 	}
 }
 
+IsCallable(func) {
+	t := Type(func)
+	return t == "Func" || t == "Closure"
+}
+
 /**
  * Some common useful functionality for games. To use, instantiate a sub class, then bind the `Down` and `Up` methods to corresponding keys.
  */
@@ -282,12 +287,12 @@ class Functionality {
 			}
 			else {
 				this.__AltKeyTriggered := true
+				if (this.Mode != "replace")
+					KeyState.Press(this.Key, true)
 				if (this.Mode == "replace" || this.Mode == "concur")
 					KeyState.Press(this.AltKey)
 				else if (this.Mode == "press")
 					KeyState.Click(this.AltKey)
-				if (this.Mode != "replace")
-					KeyState.Press(this.Key, true)
 			}
 		}
 
@@ -334,6 +339,56 @@ class Functionality {
 			KeyState.Release(this.Key)
 			for (otherKey in this.OtherKeys)
 				KeyState.Release(otherKey)
+		}
+	}
+
+	/**
+	 * Trigger another key or arbitrary action when certain condition is met, e.g. when some modifier keys are pressed down.
+	 */
+	class TriggerAnotherWhen {
+		/**
+		 * @param key Source key
+		 * @param condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
+		 * @param action The action to be executed when the condition is met.
+		 * Could be a key code indicating a secondary key to be clicked, or an object containing `Press` and `Release` functions for arbitrary action.
+		 */
+		__New(key, condition, action) {
+			this.Key := key
+			this.Condition := IsCallable(condition) ? condition : () => KeyState.Logical[condition]
+			isKeyAction := Type(action) == "String"
+			if (!isKeyAction && !(Type(action) == "Object" && (action.HasProp("Press") || action.HasProp("Release"))))
+				throw ValueError("Invalid format for action")
+			this.PressAction := isKeyAction ? () => KeyState.Press(action) : action.HasProp("Press") ? action.Press : ""
+			if (this.PressAction != "" && !IsCallable(this.PressAction))
+				throw ValueError("action.Press is not a function: " . Type(this.PressAction))
+			this.ReleaseAction := isKeyAction ? () => KeyState.Release(action) : action.HasProp("Release") ? action.Release : ""
+			if (this.ReleaseAction != "" && !IsCallable(this.ReleaseAction))
+				throw ValueError("action.Release is not a function: " . Type(this.ReleaseAction))
+			this.__Triggered := false
+			this.__ConditionMet := false
+			KeyState.Initialize(key)
+			if (isKeyAction)
+				KeyState.Initialize(action)
+		}
+
+		Down() {
+			if (this.__Triggered)
+				return
+			else
+				this.__Triggered := true
+			this.__ConditionMet := this.Condition.Call()
+			if (!this.__ConditionMet)
+				KeyState.Press(this.Key)
+			else if (this.PressAction != "")
+				this.PressAction.Call()
+		}
+
+		Up() {
+			this.__Triggered := false
+			if (!this.__ConditionMet)
+				KeyState.Release(this.Key)
+			else if (this.ReleaseAction != "")
+				this.ReleaseAction.Call()
 		}
 	}
 
