@@ -99,10 +99,28 @@ IsCallable(func) {
  * Some common useful functionality for games. To use, instantiate a sub class, then bind the `Down` and `Up` methods to corresponding keys.
  */
 class Functionality {
+	class Base {
+		Key := ""
+
+		Down() {
+		}
+
+		Up() {
+		}
+
+		Register(key := "") {
+			if (key == "")
+				key := this.Key
+			Hotkey(key . " Up", (*) => this.Up())
+			Hotkey(key, (*) => this.Down())
+			return this
+		}
+	}
+
 	/**
 	 * Perform the original action and record the key status.
 	 */
-	class Record {
+	class Record extends Functionality.Base {
 		/**
 		 * @param key The key to record and perform the original action.
 		 * @param recordTime Whether to record the pressed and released time of the key.
@@ -138,7 +156,7 @@ class Functionality {
 	 * If the action lasts long enough, it would be a pain for fingers.
 	 * This class would transfer quick click to toggling, while still preserve the original mode for long hold.
 	 */
-	class ToggleInHold {
+	class ToggleInHold extends Functionality.Base {
 		/**
 		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 */
@@ -170,7 +188,7 @@ class Functionality {
 	 * This class would transfer long hold to holding, which means that the status will be toggle when pressed and toggled back when released,
 	 * while still preserve the original mode for quick click.
 	 */
-	class HoldInToggle {
+	class HoldInToggle extends Functionality.Base {
 		/**
 		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 * @param pressTime The time the key will be hold for a click. Default is 50ms.
@@ -208,7 +226,7 @@ class Functionality {
 	 * In some situations, the player needs to click a key continuously, which is exhausting.
 	 * This class allows you to perform such action at a specified frequency while holding the key.
 	 */
-	class HoldForContinuousClick {
+	class HoldForContinuousClick extends Functionality.Base {
 		/**
 		 * @param key The key to be continuously clicked.
 		 * @param interval The interval between two clicks. Default is 250ms.
@@ -256,7 +274,7 @@ class Functionality {
 	/**
 	 * Trigger a secondary key when double clicked.
 	 */
-	class DoubleClickSecondaryKey {
+	class DoubleClickSecondaryKey extends Functionality.Base {
 		/**
 		 * @param altKey The secondary key to press when double clicked.
 		 * @param mode The reaction mode for the secondary key. Default is `"replace"`.
@@ -312,7 +330,7 @@ class Functionality {
 	/**
 	 * Click one key and trigger some other keys at the same time.
 	 */
-	class OneToMany {
+	class OneToMany extends Functionality.Base {
 		/**
 		 * @param otherKeys The keys to be triggered at the same time.
 		 */
@@ -345,7 +363,7 @@ class Functionality {
 	/**
 	 * Trigger another key or arbitrary action when certain condition is met, e.g. when some modifier keys are pressed down.
 	 */
-	class TriggerAnotherWhen {
+	class TriggerAnotherWhen extends Functionality.Base {
 		/**
 		 * @param key Source key
 		 * @param condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
@@ -396,7 +414,7 @@ class Functionality {
 	 * Double click is a common problem for mice, which is often caused by dust or the oxidation of the mouseswitch.
 	 * While a more permanent solution is to replace the switch, this class provides a temporary solution by filtering out the second click.
 	 */
-	class FixDoubleClick {
+	class FixDoubleClick extends Functionality.Base {
 		/**
 		 * @param key The key with double click problem.
 		 * @param threshould The time threshold to distinguish anomalous double click. Default is 50ms.
