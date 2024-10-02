@@ -56,7 +56,10 @@ class KeyState {
 		}
 	}
 
-	static Initialize(key) => this.Logical.Initialize(key)
+	static Initialize(key) {
+		this.Logical.Initialize(key)
+		return this
+	}
 
 	static Press(key, recordTime := false) {
 		Send("{" key " Down}")
@@ -65,6 +68,7 @@ class KeyState {
 			this.Logical.LastPressedTime[key] := A_TickCount
 		if (this.Logical.__Logger != "")
 			this.Logical.__Logger.Log(key " Pressed")
+		return this
 	}
 
 	static Release(key, recordTime := false) {
@@ -74,6 +78,7 @@ class KeyState {
 			this.Logical.LastReleasedTime[key] := A_TickCount
 		if (this.Logical.__Logger != "")
 			this.Logical.__Logger.Log(key " Released")
+		return this
 	}
 
 	static Click(key, holdTime := 50, recordTime := false) {
@@ -87,6 +92,7 @@ class KeyState {
 			Sleep(holdTime)
 			this.Release(key, recordTime)
 		}
+		return this
 	}
 }
 
