@@ -182,9 +182,9 @@ class Functionality {
 	 */
 	class Record extends Functionality.Base {
 		/**
-		 * @param key The key to record and perform the original action.
-		 * @param recordTime Whether to record the pressed and released time of the key.
-		 * @param noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
+		 * @param {String} key The key to record and perform the original action.
+		 * @param {Boolean} recordTime Whether to record the pressed and released time of the key.
+		 * @param {Boolean} noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
 		 */
 		__New(key, recordTime := false, noRepeat := false) {
 			this.Key := key
@@ -218,7 +218,7 @@ class Functionality {
 	 */
 	class ToggleInHold extends Functionality.Base {
 		/**
-		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
+		 * @param {Integer} threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 */
 		__New(key, threshold := 200) {
 			this.Key := key
@@ -250,8 +250,8 @@ class Functionality {
 	 */
 	class HoldInToggle extends Functionality.Base {
 		/**
-		 * @param threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
-		 * @param pressTime The time the key will be hold for a click. Default is 50ms.
+		 * @param {Integer} threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
+		 * @param {Integer} pressTime The time the key will be hold for a click. Default is 50ms.
 		 */
 		__New(key, threshold := 200, pressTime := 50) {
 			this.Key := key
@@ -288,9 +288,9 @@ class Functionality {
 	 */
 	class HoldForContinuousClick extends Functionality.Base {
 		/**
-		 * @param key The key to be continuously clicked.
-		 * @param interval The interval between two clicks. Default is 250ms.
-		 * @param pressTime The time the key will be hold for a press. Default is 50ms.
+		 * @param {String} key The key to be continuously clicked.
+		 * @param {Integer} interval The interval between two clicks. Default is 250ms.
+		 * @param {Integer} pressTime The time the key will be hold for a press. Default is 50ms.
 		 */
 		__New(key, interval := 250, pressTime := 50) {
 			this.Key := key
@@ -336,13 +336,13 @@ class Functionality {
 	 */
 	class DoubleClickSecondaryKey extends Functionality.Base {
 		/**
-		 * @param altKey The secondary key to press when double clicked.
-		 * @param mode The reaction mode for the secondary key. Default is `"replace"`.
+		 * @param {String} altKey The secondary key to press when double clicked.
+		 * @param {String} mode The reaction mode for the secondary key. Default is `"replace"`.
 		 * - `"replace"`: Only the secondary key will be pressed and released during the second click.
 		 * - `"concur"`: Both the original and secondary key will be pressed and released during the second click.
 		 * - `"press"`: The secondary key will be clicked at the press moment of the second click.
 		 * - `"release"`: The secondary key will be clicked at the release moment of the second click.
-		 * @param timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
+		 * @param {Integer} timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
 		 */
 		__New(key, altKey, timeout := 200, mode := "replace") {
 			this.Key := key
@@ -392,7 +392,7 @@ class Functionality {
 	 */
 	class OneToMany extends Functionality.Base {
 		/**
-		 * @param otherKeys The keys to be triggered at the same time.
+		 * @param {String[]} otherKeys The keys to be triggered at the same time.
 		 */
 		__New(key, otherKeys*) {
 			this.Key := key
@@ -465,8 +465,8 @@ class Functionality {
 	 */
 	class FixDoubleClick extends Functionality.Base {
 		/**
-		 * @param key The key with double click problem.
-		 * @param threshould The time threshold to distinguish anomalous double click. Default is 50ms.
+		 * @param {String} key The key with double click problem.
+		 * @param {Integer} threshould The time threshold to distinguish anomalous double click. Default is 50ms.
 		 */
 		__New(key, threshold := 10, logFile := "") {
 			this.Key := key
