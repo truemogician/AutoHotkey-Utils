@@ -114,11 +114,13 @@ class Functionality {
 		Up() {
 		}
 
-		Register(key := "") {
-			if (key == "")
+		Register(key?, keys*) {
+			if (!IsSet(key))
 				key := this.Key
-			Hotkey(key . " Up", (*) => this.Up())
-			Hotkey(key, (*) => this.Down())
+			for (k in [key, keys*]) {
+				Hotkey(k . " Up", (*) => this.Up())
+				Hotkey(k, (*) => this.Down())
+			}
 			return this
 		}
 	}
