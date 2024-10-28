@@ -96,11 +96,6 @@ class KeyState {
 	}
 }
 
-IsCallable(func) {
-	t := Type(func)
-	return t == "Func" || t == "Closure"
-}
-
 /**
  * Some common useful functionality for games. To use, instantiate a sub class, then bind the `Down` and `Up` methods to corresponding keys.
  */
@@ -126,13 +121,16 @@ class Functionality {
 	}
 
 	class Action {
+		PressAction := ""
+		ReleaseAction := ""
+
 		/**
 		 * Create an `Action` with a key code, an instance of `Functionality.Base`, or two functions.
-		 * @param {String | Functionality.Base | Func | Closure} param1 The first parameter for the constructor, accepting 3 types:
+		 * @param {String | Functionality.Base | Func} param1 The first parameter for the constructor, accepting 3 types:
 		 * - `String`: a key code representing the secondary key to be clicked.
 		 * - `Functionality.Base`: an instance of a `Functionality` class.
 		 * - `Func` | `Closure`: a function to be executed when pressed.
-		 * @param {Func | Closure} param2 The optional second parameter for the "two function" signature, accepting 1 type:
+		 * @param {Func} param2 The optional second parameter for the "two function" signature, accepting 1 type:
 		 * - `Func` | `Closure`: a function to be executed when released.
 		 */
 		__New(param1, param2 := "") {
@@ -145,12 +143,12 @@ class Functionality {
 				this.PressAction := param1.Down.Bind(param1)
 				this.ReleaseAction := param1.Up.Bind(param1)
 			}
-			else if (param1 == "" || IsCallable(param1)) {
+			else if (param1 == "" || HasBase(param1, Func.Prototype)) {
 				if (param1 == "" && param2 == "")
 					throw ValueError("param1 and param2 can't both be empty")
 				if (param1 != "")
 					this.PressAction := param1
-				if (IsCallable(param2))
+				if (HasBase(param2, Func.Prototype))
 					this.ReleaseAction := param2
 				else if (param2 != "")
 					throw ValueError("Invalid format of param2: " . Type(param2))
@@ -160,7 +158,7 @@ class Functionality {
 		}
 
 		/**
-		 * @param {String | Functionality.Base | Functionality.Action} action
+		 * @param {String | Func | Functionality.Base | Functionality.Action} action
 		 */
 		static From(action) {
 			return Type(action) == "Functionality.Action" ? action : Functionality.Action(action)
@@ -336,17 +334,17 @@ class Functionality {
 	 */
 	class MultiClick extends Functionality.Base {
 		/**
-		 * @param {String | Functionality.Base | Functionality.Action} action Action to be executed when double clicked.
+		 * @param {String | Func | Functionality.Base | Functionality.Action} action Action to be executed with a single click. If omitted, it defaults to clicking `key`.
 		 * @param {Integer} threshold Time threshold to distinguish consecutive clicks from a new click.
-		 * @param {(String | Functionality.Base | Functionality.Action)[]} actions Additional actions to be executed when `key` is clicked multiple times, starting from the third click.
+		 * @param {(String | Func | Functionality.Base | Functionality.Action)[]} actions Additional actions to be executed when `key` is clicked multiple times, starting from the second click.
 		 */
-		__New(key, action, threshold := 200, actions*) {
+		__New(key, primary := "", threshold := 200, actions*) {
 			this.Key := key
 			this.Threshold := threshold
-			this.Actions := Array(Functionality.Action(key), Functionality.Action.From(action))
-			for (action in actions)
-				this.Actions.Push(Functionality.Action.From(action))
-			this.Depth := this.Actions.Length + 1
+			this.Actions := Array(Functionality.Action.From(primary == "" ? key : primary))
+			for (primary in actions)
+				this.Actions.Push(Functionality.Action.From(primary))
+			this.Depth := this.Actions.Length
 			this.__LastPressed := 0
 			this.__Count := 0
 			this.__CountWhenPressed := 0
@@ -481,12 +479,12 @@ class Functionality {
 	class TriggerAnotherWhen extends Functionality.Base {
 		/**
 		 * @param {String} key Source key
-		 * @param {String | Func | Closure} condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
-		 * @param {String | Functionality.Base | Functionality.Action} action The action to be executed when `condition` is met.
+		 * @param {String | Func} condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
+		 * @param {String | Func | Functionality.Base | Functionality.Action} action The action to be executed when `condition` is met.
 		 */
 		__New(key, condition, action) {
 			this.Key := key
-			this.Condition := IsCallable(condition) ? condition : () => KeyState.Logical[condition]
+			this.Condition := HasBase(condition, Func.Prototype) ? condition : () => KeyState.Logical[condition]
 			this.Action := Functionality.Action.From(action)
 			this.__Triggered := false
 			this.__ConditionMet := false
