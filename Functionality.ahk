@@ -125,6 +125,58 @@ class Functionality {
 		}
 	}
 
+	class Action {
+		/**
+		 * Create an `Action` with a key code, an instance of `Functionality.Base`, or two functions.
+		 * @param {String | Functionality.Base | Func | Closure} param1 The first parameter for the constructor, accepting 3 types:
+		 * - `String`: a key code representing the secondary key to be clicked.
+		 * - `Functionality.Base`: an instance of a `Functionality` class.
+		 * - `Func` | `Closure`: a function to be executed when pressed.
+		 * @param {Func | Closure} param2 The optional second parameter for the "two function" signature, accepting 1 type:
+		 * - `Func` | `Closure`: a function to be executed when released.
+		 */
+		__New(param1, param2 := "") {
+			if (Type(param1) == "String") {
+				this.PressAction := () => KeyState.Press(param1)
+				this.ReleaseAction := () => KeyState.Release(param1)
+				KeyState.Initialize(param1)
+			}
+			else if (HasBase(param1, Functionality.Base.Prototype)) {
+				this.PressAction := param1.Down.Bind(param1)
+				this.ReleaseAction := param1.Up.Bind(param1)
+			}
+			else if (param1 == "" || IsCallable(param1)) {
+				if (param1 == "" && param2 == "")
+					throw ValueError("param1 and param2 can't both be empty")
+				if (param1 != "")
+					this.PressAction := param1
+				if (IsCallable(param2))
+					this.ReleaseAction := param2
+				else if (param2 != "")
+					throw ValueError("Invalid format of param2: " . Type(param2))
+			}
+			else
+				throw ValueError("Invalid format of param1: " . Type(param1))
+		}
+
+		/**
+		 * @param {String | Functionality.Base | Functionality.Action} action
+		 */
+		static From(action) {
+			return Type(action) == "Functionality.Action" ? action : Functionality.Action(action)
+		}
+
+		Press() {
+			if (this.PressAction != "")
+				this.PressAction.Call()
+		}
+
+		Release() {
+			if (this.ReleaseAction != "")
+				this.ReleaseAction.Call()
+		}
+	}
+
 	/**
 	 * Perform the original action and record the key status.
 	 */
@@ -373,28 +425,17 @@ class Functionality {
 	 */
 	class TriggerAnotherWhen extends Functionality.Base {
 		/**
-		 * @param key Source key
-		 * @param condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
-		 * @param action The action to be executed when the condition is met.
-		 * Could be a key code indicating a secondary key to be clicked, or an object containing `Press` and `Release` functions for arbitrary action.
+		 * @param {String} key Source key
+		 * @param {String | Func | Closure} condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
+		 * @param {String | Functionality.Base | Functionality.Action} action The action to be executed when `condition` is met.
 		 */
 		__New(key, condition, action) {
 			this.Key := key
 			this.Condition := IsCallable(condition) ? condition : () => KeyState.Logical[condition]
-			isKeyAction := Type(action) == "String"
-			if (!isKeyAction && !(Type(action) == "Object" && (action.HasProp("Press") || action.HasProp("Release"))))
-				throw ValueError("Invalid format for action")
-			this.PressAction := isKeyAction ? () => KeyState.Press(action) : action.HasProp("Press") ? action.Press : ""
-			if (this.PressAction != "" && !IsCallable(this.PressAction))
-				throw ValueError("action.Press is not a function: " . Type(this.PressAction))
-			this.ReleaseAction := isKeyAction ? () => KeyState.Release(action) : action.HasProp("Release") ? action.Release : ""
-			if (this.ReleaseAction != "" && !IsCallable(this.ReleaseAction))
-				throw ValueError("action.Release is not a function: " . Type(this.ReleaseAction))
+			this.Action := Functionality.Action.From(action)
 			this.__Triggered := false
 			this.__ConditionMet := false
 			KeyState.Initialize(key)
-			if (isKeyAction)
-				KeyState.Initialize(action)
 		}
 
 		Down() {
@@ -405,16 +446,16 @@ class Functionality {
 			this.__ConditionMet := this.Condition.Call()
 			if (!this.__ConditionMet)
 				KeyState.Press(this.Key)
-			else if (this.PressAction != "")
-				this.PressAction.Call()
+			else
+				this.Action.Press()
 		}
 
 		Up() {
 			this.__Triggered := false
 			if (!this.__ConditionMet)
 				KeyState.Release(this.Key)
-			else if (this.ReleaseAction != "")
-				this.ReleaseAction.Call()
+			else
+				this.Action.Release
 		}
 	}
 
