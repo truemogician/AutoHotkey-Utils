@@ -332,6 +332,61 @@ class Functionality {
 	}
 
 	/**
+	 * Trigger different actions when a key is clicked multiple times.
+	 */
+	class MultiClick extends Functionality.Base {
+		/**
+		 * @param {String | Functionality.Base | Functionality.Action} action Action to be executed when double clicked.
+		 * @param {Integer} threshold Time threshold to distinguish consecutive clicks from a new click.
+		 * @param {(String | Functionality.Base | Functionality.Action)[]} actions Additional actions to be executed when `key` is clicked multiple times, starting from the third click.
+		 */
+		__New(key, action, threshold := 200, actions*) {
+			this.Key := key
+			this.Threshold := threshold
+			this.Actions := Array(Functionality.Action(key), Functionality.Action.From(action))
+			for (action in actions)
+				this.Actions.Push(Functionality.Action.From(action))
+			this.Depth := this.Actions.Length + 1
+			this.__LastPressed := 0
+			this.__Count := 0
+			this.__CountWhenPressed := 0
+			KeyState.Initialize(key)
+		}
+
+		__StartTimer(count, isPress) {
+			Callback() {
+				if (count != this.__Count)
+					return
+				action := this.Actions[count]
+				isPress ? action.Press() : action.Release()
+			}
+			SetTimer(Callback, -this.Threshold)
+		}
+
+		Down() {
+			if (this.__CountWhenPressed)
+				return
+			this.__Count := A_TickCount - this.__LastPressed > this.Threshold ? 1 : this.__Count + 1
+			this.__LastPressed := A_TickCount
+			this.__CountWhenPressed := this.__Count
+			if (this.__Count < this.Depth)
+				this.__StartTimer(this.__Count, true)
+			else {
+				this.__Count := 0
+				this.Actions[this.Depth].Press()
+			}
+		}
+
+		Up() {
+			if (this.__CountWhenPressed < this.Depth)
+				this.__StartTimer(this.__CountWhenPressed, false)
+			else
+				this.Actions[this.Depth].Release()
+			this.__CountWhenPressed := 0
+		}
+	}
+
+	/**
 	 * Trigger a secondary key when double clicked.
 	 */
 	class DoubleClickSecondaryKey extends Functionality.Base {
