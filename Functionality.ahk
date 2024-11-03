@@ -18,41 +18,41 @@ class KeyState {
 	 * otherwize, they are managed by the class itself.
 	 */
 	class Logical {
-		static __Map := Map()
-		static __Logger := ""
-		static __LastPressedTimeMap := Map()
-		static __LastReleasedTimeMap := Map()
+		static _Map := Map()
+		static _Logger := ""
+		static _LastPressedTimeMap := Map()
+		static _LastReleasedTimeMap := Map()
 		/**
 		 * Whether to use the `GetKeyState` to retrieve the logical states of keys. Default is `true`.
 		 */
 		static UseSystemState := true
 		static __Item[key] {
-			get => this.UseSystemState ? GetKeyState(key) : this.__Map.Has(key) ? this.__Map[key] : false
+			get => this.UseSystemState ? GetKeyState(key) : this._Map.Has(key) ? this._Map[key] : false
 			set {
 				if (!this.UseSystemState)
-					this.__Map[key] := value
+					this._Map[key] := value
 			}
 		}
 		/**
 		 * A map recording the last pressed time of keys.
 		 */
-		static LastPressedTime => this.__LastPressedTimeMap
+		static LastPressedTime => this._LastPressedTimeMap
 		/**
 		 * A map recording the last released time of keys.
 		 */
-		static LastReleasedTime => this.__LastReleasedTimeMap
+		static LastReleasedTime => this._LastReleasedTimeMap
 
 		static Initialize(key) {
 			if (!this.UseSystemState)
-				this.__Map[key] := false
-			this.__LastPressedTimeMap[key] := 0
-			this.__LastReleasedTimeMap[key] := 0
+				this._Map[key] := false
+			this._LastPressedTimeMap[key] := 0
+			this._LastReleasedTimeMap[key] := 0
 		}
 		static EnableLogging(logFile) {
-			this.__Logger := Logger(logFile)
+			this._Logger := Logger(logFile)
 		}
 		static DisableLogging() {
-			this.__Logger := ""
+			this._Logger := ""
 		}
 	}
 
@@ -66,8 +66,8 @@ class KeyState {
 		this.Logical[key] := true
 		if (recordTime)
 			this.Logical.LastPressedTime[key] := A_TickCount
-		if (this.Logical.__Logger != "")
-			this.Logical.__Logger.Log(key " Pressed")
+		if (this.Logical._Logger != "")
+			this.Logical._Logger.Log(key " Pressed")
 		return this
 	}
 
@@ -76,16 +76,16 @@ class KeyState {
 		this.Logical[key] := false
 		if (recordTime)
 			this.Logical.LastReleasedTime[key] := A_TickCount
-		if (this.Logical.__Logger != "")
-			this.Logical.__Logger.Log(key " Released")
+		if (this.Logical._Logger != "")
+			this.Logical._Logger.Log(key " Released")
 		return this
 	}
 
 	static Click(key, holdTime := 50, recordTime := false) {
 		if (holdTime <= 0) {
 			Send(key)
-			if (this.Logical.__Logger != "")
-				this.Logical.__Logger.Log(key " Clicked")
+			if (this.Logical._Logger != "")
+				this.Logical._Logger.Log(key " Clicked")
 		}
 		else {
 			this.Press(key, recordTime)
@@ -188,7 +188,7 @@ class Functionality {
 			this.Key := key
 			this.RecordTime := recordTime
 			this.NoRepeat := noRepeat
-			this.__Triggered := false
+			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
@@ -196,16 +196,16 @@ class Functionality {
 		 * @return Whether the action is performed. Only false when `NoRepeat` is true and the event has already been triggered.
 		 */
 		Down() {
-			if (this.NoRepeat && this.__Triggered)
+			if (this.NoRepeat && this._Triggered)
 				return false
 			KeyState.Press(this.Key, this.RecordTime)
-			this.__Triggered := true
+			this._Triggered := true
 			return true
 		}
 
 		Up() {
 			KeyState.Release(this.Key)
-			this.__Triggered := false
+			this._Triggered := false
 		}
 	}
 
@@ -221,20 +221,20 @@ class Functionality {
 		__New(key, threshold := 200) {
 			this.Key := key
 			this.Threshold := threshold
-			this.__Triggered := false
+			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
-			if (this.__Triggered)
+			if (this._Triggered)
 				return
-			this.__Triggered := true
+			this._Triggered := true
 			if (!KeyState.Logical[this.Key])
 				KeyState.Press(this.Key, true)
 		}
 
 		Up() {
-			this.__Triggered := false
+			this._Triggered := false
 			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold)
 				KeyState.Release(this.Key)
 		}
@@ -255,17 +255,17 @@ class Functionality {
 			this.Key := key
 			this.Threshold := threshold
 			this.PressTime := pressTime
-			this.__Triggered := false
+			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
-			if (this.__Triggered)
+			if (this._Triggered)
 				return
-			this.__Triggered := true
+			this._Triggered := true
 			KeyState.Press(this.Key)
 			timerFunc() {
-				if (this.__Triggered)
+				if (this._Triggered)
 					KeyState.Release(this.Key)
 			}
 			SetTimer(timerFunc, -this.Threshold)
@@ -276,7 +276,7 @@ class Functionality {
 				KeyState.Release(this.Key)
 			else
 				KeyState.Click(this.Key, this.PressTime)
-			this.__Triggered := false
+			this._Triggered := false
 		}
 	}
 
@@ -296,16 +296,16 @@ class Functionality {
 			this.Interval := interval
 			this.PressTime := pressTime
 			this.Oscillation := oscillation
-			this.__Triggered := false
+			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
-			if (this.__Triggered)
+			if (this._Triggered)
 				return
-			this.__Triggered := true
+			this._Triggered := true
 			timerFunc() {
-				if (!this.__Triggered)
+				if (!this._Triggered)
 					SetTimer(, 0)
 				else if (this.Oscillation == 0)
 					KeyState.Click(this.Key, this.PressTime)
@@ -321,7 +321,7 @@ class Functionality {
 		Up() {
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
-			this.__Triggered := false
+			this._Triggered := false
 		}
 	}
 
@@ -341,15 +341,15 @@ class Functionality {
 			for (primary in actions)
 				this.Actions.Push(Functionality.Action.From(primary))
 			this.Depth := this.Actions.Length
-			this.__LastPressed := 0
-			this.__Count := 0
-			this.__CountWhenPressed := 0
+			this._LastPressed := 0
+			this._Count := 0
+			this._CountWhenPressed := 0
 			KeyState.Initialize(key)
 		}
 
-		__StartTimer(count, isPress) {
+		_StartTimer(count, isPress) {
 			Callback() {
-				if (count != this.__Count)
+				if (count != this._Count)
 					return
 				action := this.Actions[count]
 				isPress ? action.Press() : action.Release()
@@ -358,25 +358,25 @@ class Functionality {
 		}
 
 		Down() {
-			if (this.__CountWhenPressed)
+			if (this._CountWhenPressed)
 				return
-			this.__Count := A_TickCount - this.__LastPressed > this.Threshold ? 1 : this.__Count + 1
-			this.__LastPressed := A_TickCount
-			this.__CountWhenPressed := this.__Count
-			if (this.__Count < this.Depth)
-				this.__StartTimer(this.__Count, true)
+			this._Count := A_TickCount - this._LastPressed > this.Threshold ? 1 : this._Count + 1
+			this._LastPressed := A_TickCount
+			this._CountWhenPressed := this._Count
+			if (this._Count < this.Depth)
+				this._StartTimer(this._Count, true)
 			else {
-				this.__Count := 0
+				this._Count := 0
 				this.Actions[this.Depth].Press()
 			}
 		}
 
 		Up() {
-			if (this.__CountWhenPressed < this.Depth)
-				this.__StartTimer(this.__CountWhenPressed, false)
+			if (this._CountWhenPressed < this.Depth)
+				this._StartTimer(this._CountWhenPressed, false)
 			else
 				this.Actions[this.Depth].Release()
-			this.__CountWhenPressed := 0
+			this._CountWhenPressed := 0
 		}
 	}
 
@@ -398,22 +398,22 @@ class Functionality {
 			this.AltKey := altKey
 			this.Timeout := timeout
 			this.Mode := mode
-			this.__Triggered := false
-			this.__AltKeyTriggered := false
+			this._Triggered := false
+			this._AltKeyTriggered := false
 			KeyState.Initialize(key)
 			KeyState.Initialize(altKey)
 		}
 
 		Down() {
-			if (this.__Triggered)
+			if (this._Triggered)
 				return
-			this.__Triggered := true
+			this._Triggered := true
 			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Timeout) {
 				KeyState.Press(this.Key, true)
-				this.__AltKeyTriggered := false
+				this._AltKeyTriggered := false
 			}
 			else {
-				this.__AltKeyTriggered := true
+				this._AltKeyTriggered := true
 				if (this.Mode != "replace")
 					KeyState.Press(this.Key, true)
 				if (this.Mode == "replace" || this.Mode == "concur")
@@ -424,14 +424,14 @@ class Functionality {
 		}
 
 		Up() {
-			this.__Triggered := false
-			if (this.__AltKeyTriggered) {
+			this._Triggered := false
+			if (this._AltKeyTriggered) {
 				if (this.mode == "replace" || this.mode == "concur")
 					KeyState.Release(this.AltKey)
 				else if (this.mode == "release")
 					KeyState.Click(this.AltKey)
 			}
-			if (!this.__AltKeyTriggered || this.Mode != "replace")
+			if (!this._AltKeyTriggered || this.Mode != "replace")
 				KeyState.Release(this.Key)
 		}
 	}
@@ -446,23 +446,23 @@ class Functionality {
 		__New(key, otherKeys*) {
 			this.Key := key
 			this.OtherKeys := otherKeys
-			this.__Triggered := false
+			this._Triggered := false
 			KeyState.Initialize(key)
 			for (otherKey in otherKeys)
 				KeyState.Initialize(otherKey)
 		}
 
 		Down() {
-			if (this.__Triggered)
+			if (this._Triggered)
 				return
-			this.__Triggered := true
+			this._Triggered := true
 			KeyState.Press(this.Key)
 			for (otherKey in this.OtherKeys)
 				KeyState.Press(otherKey)
 		}
 
 		Up() {
-			this.__Triggered := false
+			this._Triggered := false
 			KeyState.Release(this.Key)
 			for (otherKey in this.OtherKeys)
 				KeyState.Release(otherKey)
@@ -481,15 +481,15 @@ class Functionality {
 		 */
 		__New(key, condition, action, conditionsAndActions*) {
 			this.Key := key
-			this.__DefaultAction := Functionality.Action(key)
+			this._DefaultAction := Functionality.Action(key)
 			this.Conditions := Array(HasBase(condition, Func.Prototype) ? condition : () => KeyState.Logical[condition])
 			this.Actions := Array(Functionality.Action.From(action))
 			if (conditionsAndActions.Length & 1)
 				throw ValueError("Additional conditions and actions should come in pairs")
 			if (conditionsAndActions.Length > 0)
 				this.Add(conditionsAndActions*)
-			this.__Triggered := false
-			this.__ConditionMet := 0
+			this._Triggered := false
+			this._ConditionMet := 0
 			KeyState.Initialize(key)
 		}
 
@@ -497,8 +497,8 @@ class Functionality {
 		 * Default action when `condition` isn't met. Defaults to clicking `Key`.
 		 */
 		DefaultAction {
-			get => this.__DefaultAction
-			set => this.__DefaultAction := Functionality.Action.From(Value)
+			get => this._DefaultAction
+			set => this._DefaultAction := Functionality.Action.From(Value)
 		}
 
 		Add(condition, action, conditionsAndActions*) {
@@ -516,26 +516,26 @@ class Functionality {
 		}
 
 		Down() {
-			if (this.__Triggered)
+			if (this._Triggered)
 				return
 			else
-				this.__Triggered := true
-			this.__ConditionMet := 0
+				this._Triggered := true
+			this._ConditionMet := 0
 			for (condition in this.Conditions)
 				if (condition.Call())
-					this.__ConditionMet := A_Index
-			if (this.__ConditionMet == 0)
-				this.__DefaultAction.Press()
+					this._ConditionMet := A_Index
+			if (this._ConditionMet == 0)
+				this._DefaultAction.Press()
 			else
-				this.Actions[this.__ConditionMet].Press()
+				this.Actions[this._ConditionMet].Press()
 		}
 
 		Up() {
-			this.__Triggered := false
-			if (this.__ConditionMet == 0)
-				this.__DefaultAction.Release()
+			this._Triggered := false
+			if (this._ConditionMet == 0)
+				this._DefaultAction.Release()
 			else
-				this.Actions[this.__ConditionMet].Release()
+				this.Actions[this._ConditionMet].Release()
 		}
 	}
 
