@@ -289,20 +289,16 @@ class Functionality {
 		 * @param {String} key The key to be continuously clicked.
 		 * @param {Integer} interval The interval between two clicks. Default is 250ms.
 		 * @param {Integer} pressTime The time the key will be hold for a press. Default is 50ms.
+		 * @param {Integer} oscillation Oscillation for press time and interval, should be within [0, 1). Default is 0.
 		 */
-		__New(key, interval := 250, pressTime := 50) {
+		__New(key, interval := 250, pressTime := 50, oscillation := 0) {
 			this.Key := key
 			this.Interval := interval
 			this.PressTime := pressTime
+			this.Oscillation := oscillation
 			this.__Triggered := false
 			KeyState.Initialize(key)
 		}
-
-		/**
-		 * Oscillation for press time and interval, should be within [0, 1). Default is 0.
-		 * @note A constant press time and interval may rouse suspicion, so using oscillation is recommended.
-		 */
-		Oscillation := 0
 
 		Down() {
 			if (this.__Triggered)
@@ -481,14 +477,42 @@ class Functionality {
 		 * @param {String} key Source key
 		 * @param {String | Func} condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
 		 * @param {String | Func | Functionality.Base | Functionality.Action} action The action to be executed when `condition` is met.
+		 * @param {(String | Func | Functionality.Base | Functionality.Action)[]} conditionsAndActions Additional conditionals and actions. Format: `condition1`, `action1`, `condition2`, `action2`, etc.
 		 */
-		__New(key, condition, action) {
+		__New(key, condition, action, conditionsAndActions*) {
 			this.Key := key
-			this.Condition := HasBase(condition, Func.Prototype) ? condition : () => KeyState.Logical[condition]
-			this.Action := Functionality.Action.From(action)
+			this.__DefaultAction := Functionality.Action(key)
+			this.Conditions := Array(HasBase(condition, Func.Prototype) ? condition : () => KeyState.Logical[condition])
+			this.Actions := Array(Functionality.Action.From(action))
+			if (conditionsAndActions.Length & 1)
+				throw ValueError("Additional conditions and actions should come in pairs")
+			if (conditionsAndActions.Length > 0)
+				this.Add(conditionsAndActions*)
 			this.__Triggered := false
-			this.__ConditionMet := false
+			this.__ConditionMet := 0
 			KeyState.Initialize(key)
+		}
+
+		/**
+		 * Default action when `condition` isn't met. Defaults to clicking `Key`.
+		 */
+		DefaultAction {
+			get => this.__DefaultAction
+			set => this.__DefaultAction := Functionality.Action.From(Value)
+		}
+
+		Add(condition, action, conditionsAndActions*) {
+			if (conditionsAndActions.Length & 1)
+				throw ValueError("Additional conditions and actions should come in pairs")
+			this.Conditions.Push(HasBase(condition, Func.Prototype) ? condition : () => KeyState.Logical[condition])
+			this.Actions.Push(Functionality.Action.From(action))
+			for (item in conditionsAndActions) {
+				if (A_Index & 1)
+					this.Conditions.Push(HasBase(item, Func.Prototype) ? item : () => KeyState.Logical[item])
+				else
+					this.Actions.Push(Functionality.Action.From(item))
+			}
+			return this
 		}
 
 		Down() {
@@ -496,19 +520,22 @@ class Functionality {
 				return
 			else
 				this.__Triggered := true
-			this.__ConditionMet := this.Condition.Call()
-			if (!this.__ConditionMet)
-				KeyState.Press(this.Key)
+			this.__ConditionMet := 0
+			for (condition in this.Conditions)
+				if (condition.Call())
+					this.__ConditionMet := A_Index
+			if (this.__ConditionMet == 0)
+				this.__DefaultAction.Press()
 			else
-				this.Action.Press()
+				this.Actions[this.__ConditionMet].Press()
 		}
 
 		Up() {
 			this.__Triggered := false
-			if (!this.__ConditionMet)
-				KeyState.Release(this.Key)
+			if (this.__ConditionMet == 0)
+				this.__DefaultAction.Release()
 			else
-				this.Action.Release
+				this.Actions[this.__ConditionMet].Release()
 		}
 	}
 
