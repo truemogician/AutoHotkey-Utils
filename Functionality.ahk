@@ -290,38 +290,44 @@ class Functionality {
 		 * @param {Integer} interval The interval between two clicks. Default is 250ms.
 		 * @param {Integer} pressTime The time the key will be hold for a press. Default is 50ms.
 		 * @param {Integer} oscillation Oscillation for press time and interval, should be within [0, 1). Default is 0.
+		 * @param {Integer} maxClick Maximum number of clicks when holding. Default is -1, meaning no limit for the maximum number of clicks.
+		 * @param {Boolean} recordTime Whether to record the press time or not. Default is `false`
 		 */
-		__New(key, interval := 250, pressTime := 50, oscillation := 0) {
+		__New(key, interval := 250, pressTime := 50, oscillation := 0, maxClick := -1, recordTime := false) {
 			this.Key := key
 			this.Interval := interval
 			this.PressTime := pressTime
 			this.Oscillation := oscillation
-			this._Triggered := false
+			this.MaxClick := maxClick
+			this.RecordTime := recordTime
+			this._ClickCount := -1
 			KeyState.Initialize(key)
 		}
 
+		_Loop() {
+			loop {
+				KeyState.Press(this.Key, this.RecordTime)
+				Sleep(this.PressTime * (this.Oscillation == 0 ? 1 : Random(1 - this.Oscillation, 1 + this.Oscillation)))
+				if (this._ClickCount == -1)
+					break
+				KeyState.Release(this.Key)
+				if (++this._ClickCount >= this.MaxClick && this.MaxClick > 0)
+					break
+				Sleep(this.Interval * (this.Oscillation == 0 ? 1 : Random(1 - this.Oscillation, 1 + this.Oscillation)))
+			} until (this._ClickCount == -1)
+		}
+
 		Down() {
-			if (this._Triggered)
+			if (this._ClickCount != -1)
 				return
-			this._Triggered := true
-			timerFunc() {
-				if (!this._Triggered)
-					SetTimer(, 0)
-				else if (this.Oscillation == 0)
-					KeyState.Click(this.Key, this.PressTime)
-				else {
-					KeyState.Click(this.Key, Round(this.PressTime * Random(1 - this.Oscillation, 1 + this.Oscillation)))
-					SetTimer(timerFunc, Round(this.Interval * Random(1 - this.Oscillation, 1 + this.Oscillation)))
-				}
-			}
-			timerFunc()
-			SetTimer(timerFunc, this.Interval)
+			this._ClickCount := 0
+			SetTimer(this._Loop.Bind(this), -1)
 		}
 
 		Up() {
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
-			this._Triggered := false
+			this._ClickCount := -1
 		}
 	}
 
