@@ -381,58 +381,51 @@ class Functionality {
 	}
 
 	/**
-	 * Trigger a secondary key when double clicked.
+	 * Trigger a secondary action when double clicked.
 	 */
-	class DoubleClickSecondaryKey extends Functionality.Base {
+	class MultiClickSecondaryAction extends Functionality.Base {
 		/**
-		 * @param {String} altKey The secondary key to press when double clicked.
-		 * @param {String} mode The reaction mode for the secondary key. Default is `"replace"`.
-		 * - `"replace"`: Only the secondary key will be pressed and released during the second click.
-		 * - `"concur"`: Both the original and secondary key will be pressed and released during the second click.
-		 * - `"press"`: The secondary key will be clicked at the press moment of the second click.
-		 * - `"release"`: The secondary key will be clicked at the release moment of the second click.
+		 * @param {String | Func | Functionality.Base | Functionality.Action} secondaryAction The secondary key to press when double clicked.
 		 * @param {Integer} timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
+		 * @param {Integer} nthClick Number of continuous clicks required to trigger the secondary action. Must be greater or equal to 2.
+		 * Default is 2, meaning the secondary action will be triggered when `key` is double clicked.
 		 */
-		__New(key, altKey, timeout := 200, mode := "replace") {
+		__New(key, secondaryAction, timeout := 200, nthClick := 2) {
 			this.Key := key
-			this.AltKey := altKey
+			this.SecondaryAction := Functionality.Action.From(secondaryAction)
 			this.Timeout := timeout
-			this.Mode := mode
+			if (nthClick < 2)
+				throw ValueError("nthClick must be greater or equal to 2.")
+			this.NthClick := nthClick
 			this._Triggered := false
-			this._AltKeyTriggered := false
+			this._Count := 0
+			this._SecondaryTriggered := false
 			KeyState.Initialize(key)
-			KeyState.Initialize(altKey)
 		}
 
 		Down() {
 			if (this._Triggered)
 				return
-			this._Triggered := true
-			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Timeout) {
+			else
+				this._Triggered := true
+			this._Count := A_TickCount - KeyState.Logical.LastPressedTime[this.Key] <= this.Timeout ? this._Count + 1 : 1
+			if (this._Count < this.NthClick)
 				KeyState.Press(this.Key, true)
-				this._AltKeyTriggered := false
-			}
 			else {
-				this._AltKeyTriggered := true
-				if (this.Mode != "replace")
-					KeyState.Press(this.Key, true)
-				if (this.Mode == "replace" || this.Mode == "concur")
-					KeyState.Press(this.AltKey)
-				else if (this.Mode == "press")
-					KeyState.Click(this.AltKey)
+				this._SecondaryTriggered := true
+				this.SecondaryAction.Press()
 			}
 		}
 
 		Up() {
 			this._Triggered := false
-			if (this._AltKeyTriggered) {
-				if (this.mode == "replace" || this.mode == "concur")
-					KeyState.Release(this.AltKey)
-				else if (this.mode == "release")
-					KeyState.Click(this.AltKey)
-			}
-			if (!this._AltKeyTriggered || this.Mode != "replace")
+			if (!this._SecondaryTriggered)
 				KeyState.Release(this.Key)
+			else {
+				this.SecondaryAction.Release()
+				this._Count := 0
+				this._SecondaryTriggered := false
+			}
 		}
 	}
 
