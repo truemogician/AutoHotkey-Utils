@@ -1,5 +1,63 @@
 #Include "./Logger.ahk"
 
+
+class Utils {
+	static _SleepResolution := 15.6
+
+	static SystemTime {
+		get {
+			static freq := 0
+			if (freq == 0)
+				DllCall("QueryPerformanceFrequency", "Int64*", &freq)
+			DllCall("QueryPerformanceCounter", "Int64*", &tick := 0)
+			return tick / freq * 1000
+		}
+	}
+
+	static ThreadSleep(time) {
+		DllCall("kernel32\Sleep", "UInt", time)
+	}
+
+	static SleepAtLeast(time) {
+		start := this.SystemTime
+		Sleep(time)
+		while (this.SystemTime - start < time)
+			Sleep(this._SleepResolution)
+	}
+
+	static SleepAtMost(time) {
+		if (time <= this._SleepResolution) {
+			this.ThreadSleep(time)
+			return
+		}
+		start := this.SystemTime
+		Sleep(time - this._SleepResolution)
+		while (this.SystemTime - start + this._SleepResolution < time)
+			Sleep(this._SleepResolution)
+	}
+
+	/**
+	 * @param time The amount of time to pause (in milliseconds).
+	 * @param mode Sleep mode.
+	 * - `unset` or `""`: `Sleep`
+	 * - `"thread"`: `Utils.ThreadSleep`
+	 * - `"min"`: `Utils.SleepAtLeast`
+	 * - `"max"`: `Utils.SleepAtMost`
+	 */
+	static Sleep(time, mode?) {
+		if (!IsSet(mode) || mode == "")
+			Sleep(time)
+		else if (mode == "thread")
+			this.ThreadSleep(time)
+		else if (mode == "min")
+			this.SleepAtLeast(time)
+		else if (mode == "max")
+			this.SleepAtMost(time)
+		else
+			throw ValueError("Invalid sleep mode: " mode)
+	}
+}
+
 /**
  * A static class storing and mapping the logical and physical states of keys.
  */
@@ -56,6 +114,8 @@ class KeyState {
 		}
 	}
 
+	static SleepMode := ""
+
 	static Initialize(key) {
 		this.Logical.Initialize(key)
 		return this
@@ -65,7 +125,7 @@ class KeyState {
 		Send("{" key " Down}")
 		this.Logical[key] := true
 		if (recordTime)
-			this.Logical.LastPressedTime[key] := A_TickCount
+			this.Logical.LastPressedTime[key] := Utils.SystemTime
 		if (this.Logical._Logger != "")
 			this.Logical._Logger.Log(key " Pressed")
 		return this
@@ -75,7 +135,7 @@ class KeyState {
 		Send("{" key " Up}")
 		this.Logical[key] := false
 		if (recordTime)
-			this.Logical.LastReleasedTime[key] := A_TickCount
+			this.Logical.LastReleasedTime[key] := Utils.SystemTime
 		if (this.Logical._Logger != "")
 			this.Logical._Logger.Log(key " Released")
 		return this
@@ -89,7 +149,7 @@ class KeyState {
 		}
 		else {
 			this.Press(key, recordTime)
-			Sleep(holdTime)
+			Utils.Sleep(holdTime, this.SleepMode)
 			this.Release(key, recordTime)
 		}
 		return this
@@ -235,7 +295,7 @@ class Functionality {
 
 		Up() {
 			this._Triggered := false
-			if (A_TickCount - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold)
+			if (Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold)
 				KeyState.Release(this.Key)
 		}
 	}
@@ -293,13 +353,14 @@ class Functionality {
 		 * @param {Integer} maxClick Maximum number of clicks when holding. Default is -1, meaning no limit for the maximum number of clicks.
 		 * @param {Boolean} recordTime Whether to record the press time or not. Default is `false`
 		 */
-		__New(key, interval := 250, pressTime := 50, oscillation := 0, maxClick := -1, recordTime := false) {
+		__New(key, interval := 250, pressTime := 50, oscillation := 0, maxClick := -1, recordTime := false, sleepMode := "") {
 			this.Key := key
 			this.Interval := interval
 			this.PressTime := pressTime
 			this.Oscillation := oscillation
 			this.MaxClick := maxClick
 			this.RecordTime := recordTime
+			this.SleepMode := sleepMode
 			this._ClickCount := -1
 			KeyState.Initialize(key)
 		}
@@ -307,13 +368,19 @@ class Functionality {
 		_Loop() {
 			loop {
 				KeyState.Press(this.Key, this.RecordTime)
-				Sleep(this.PressTime * (this.Oscillation == 0 ? 1 : Random(1 - this.Oscillation, 1 + this.Oscillation)))
+				if (this.Oscillation == 0)
+					Utils.Sleep(this.PressTime, this.SleepMode)
+				else
+					Utils.Sleep(this.PressTime * Random(1 - this.Oscillation, 1 + this.Oscillation))
 				if (this._ClickCount == -1)
 					break
 				KeyState.Release(this.Key)
 				if (++this._ClickCount >= this.MaxClick && this.MaxClick > 0)
 					break
-				Sleep(this.Interval * (this.Oscillation == 0 ? 1 : Random(1 - this.Oscillation, 1 + this.Oscillation)))
+				if (this.Oscillation == 0)
+					Utils.Sleep(this.Interval, this.SleepMode)
+				else
+					Utils.Sleep(this.Interval * Random(1 - this.Oscillation, 1 + this.Oscillation))
 			} until (this._ClickCount == -1)
 		}
 
@@ -325,6 +392,8 @@ class Functionality {
 		}
 
 		Up() {
+			if (this._ClickCount == -1)
+				return
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
 			this._ClickCount := -1
@@ -346,12 +415,13 @@ class Functionality {
 			this.Actions := Array(Functionality.Action.From(primary == "" ? key : primary))
 			for (primary in actions)
 				this.Actions.Push(Functionality.Action.From(primary))
-			this.Depth := this.Actions.Length
 			this._LastPressed := 0
 			this._Count := 0
 			this._CountWhenPressed := 0
 			KeyState.Initialize(key)
 		}
+
+		Depth => this.Actions.Length
 
 		_StartTimer(count, isPress) {
 			Callback() {
@@ -366,8 +436,9 @@ class Functionality {
 		Down() {
 			if (this._CountWhenPressed)
 				return
-			this._Count := A_TickCount - this._LastPressed > this.Threshold ? 1 : this._Count + 1
-			this._LastPressed := A_TickCount
+			now := Utils.SystemTime
+			this._Count := now - this._LastPressed > this.Threshold ? 1 : this._Count + 1
+			this._LastPressed := now
 			this._CountWhenPressed := this._Count
 			if (this._Count < this.Depth)
 				this._StartTimer(this._Count, true)
@@ -414,7 +485,7 @@ class Functionality {
 				return
 			else
 				this._Triggered := true
-			this._Count := A_TickCount - KeyState.Logical.LastPressedTime[this.Key] <= this.Timeout ? this._Count + 1 : 1
+			this._Count := Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key] <= this.Timeout ? this._Count + 1 : 1
 			if (this._Count < this.NthClick)
 				KeyState.Press(this.Key, true)
 			else {
@@ -569,7 +640,7 @@ class Functionality {
 				this._ReleaseIgnored := false
 				return
 			}
-			interval := A_TickCount - KeyState.Logical.LastReleasedTime[this.Key]
+			interval := Utils.SystemTime - KeyState.Logical.LastReleasedTime[this.Key]
 			try curWindow := WinGetID("A")
 			catch {
 				curWindow := ""
@@ -595,7 +666,7 @@ class Functionality {
 				this._PressIgnored := false
 				return
 			}
-			interval := A_TickCount - KeyState.Logical.LastPressedTime[this.Key]
+			interval := Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key]
 			try curWindow := WinGetID("A")
 			catch {
 				curWindow := ""
