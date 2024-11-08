@@ -1,4 +1,4 @@
-#Include "./Logger.ahk"
+#Include "./Utils.ahk"
 
 
 class Utils {
