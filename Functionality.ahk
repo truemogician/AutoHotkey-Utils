@@ -239,6 +239,8 @@ class Functionality {
 	 * Perform the original action and record the key status.
 	 */
 	class Record extends Functionality.Base {
+		_Triggered := false
+
 		/**
 		 * @param {String} key The key to record and perform the original action.
 		 * @param {Boolean} recordTime Whether to record the pressed and released time of the key.
@@ -248,24 +250,26 @@ class Functionality {
 			this.Key := key
 			this.RecordTime := recordTime
 			this.NoRepeat := noRepeat
-			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		/**
-		 * @return Whether the action is performed. Only false when `NoRepeat` is true and the event has already been triggered.
+		 * @return Whether the action is performed. Only `false` when `NoRepeat` is `true` and the event has already been triggered.
 		 */
 		Down() {
 			if (this.NoRepeat && this._Triggered)
 				return false
-			KeyState.Press(this.Key, this.RecordTime)
 			this._Triggered := true
+			KeyState.Press(this.Key, this.RecordTime)
 			return true
 		}
 
 		Up() {
-			KeyState.Release(this.Key)
+			if (this.NoRepeat && !this._Triggered)
+				return false
 			this._Triggered := false
+			KeyState.Release(this.Key)
+			return true
 		}
 	}
 
@@ -275,13 +279,15 @@ class Functionality {
 	 * This class would transfer quick click to toggling, while still preserve the original mode for long hold.
 	 */
 	class ToggleInHold extends Functionality.Base {
+		_Triggered := false
+		_SecondToggle := false
+
 		/**
 		 * @param {Integer} threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
 		 */
 		__New(key, threshold := 200) {
 			this.Key := key
 			this.Threshold := threshold
-			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
@@ -289,14 +295,20 @@ class Functionality {
 			if (this._Triggered)
 				return
 			this._Triggered := true
-			if (!KeyState.Logical[this.Key])
+			if (KeyState.Logical[this.Key])
+				this._SecondToggle := true
+			else
 				KeyState.Press(this.Key, true)
 		}
 
 		Up() {
+			if (!this._Triggered)
+				return
 			this._Triggered := false
-			if (Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold)
+			if (this._SecondToggle || Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key] > this.Threshold) {
+				this._SecondToggle := false
 				KeyState.Release(this.Key)
+			}
 		}
 	}
 
@@ -307,36 +319,41 @@ class Functionality {
 	 * while still preserve the original mode for quick click.
 	 */
 	class HoldInToggle extends Functionality.Base {
+		_Triggered := false
+		_LastTriggered := 0
+
 		/**
-		 * @param {Integer} threshold Time threshold to distinguish long hold from quick click. Default is 200ms.
-		 * @param {Integer} pressTime The time the key will be hold for a click. Default is 50ms.
+		 * @param {Integer} threshold Time threshold to distinguish a long hold from a quick click. Default is 200ms.
+		 * @param {Integer} pressTime The time to hold `key` for a click. Default is 50ms.
 		 */
 		__New(key, threshold := 200, pressTime := 50) {
 			this.Key := key
 			this.Threshold := threshold
 			this.PressTime := pressTime
-			this._Triggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
 			if (this._Triggered)
 				return
+			startTime := Utils.SystemTime
 			this._Triggered := true
-			KeyState.Press(this.Key)
-			timerFunc() {
-				if (this._Triggered)
+			this._LastTriggered := startTime
+			SetTimer((*) {
+				if (this._Triggered && startTime == this._LastTriggered)
 					KeyState.Release(this.Key)
-			}
-			SetTimer(timerFunc, -this.Threshold)
+			}, -this.Threshold)
+			KeyState.Press(this.Key)
 		}
 
 		Up() {
+			if (!this._Triggered)
+				return
+			this._Triggered := false
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
 			else
 				KeyState.Click(this.Key, this.PressTime)
-			this._Triggered := false
 		}
 	}
 
@@ -404,6 +421,10 @@ class Functionality {
 	 * Trigger different actions when a key is clicked multiple times.
 	 */
 	class MultiClick extends Functionality.Base {
+		_LastPressed := 0
+		_Count := 0
+		_CountWhenPressed := 0
+
 		/**
 		 * @param {String | Func | Functionality.Base | Functionality.Action} action Action to be executed with a single click. If omitted, it defaults to clicking `key`.
 		 * @param {Integer} threshold Time threshold to distinguish consecutive clicks from a new click.
@@ -415,9 +436,6 @@ class Functionality {
 			this.Actions := Array(Functionality.Action.From(primary == "" ? key : primary))
 			for (primary in actions)
 				this.Actions.Push(Functionality.Action.From(primary))
-			this._LastPressed := 0
-			this._Count := 0
-			this._CountWhenPressed := 0
 			KeyState.Initialize(key)
 		}
 
@@ -442,18 +460,21 @@ class Functionality {
 			this._CountWhenPressed := this._Count
 			if (this._Count < this.Depth)
 				this._StartTimer(this._Count, true)
-			else {
-				this._Count := 0
+			else
 				this.Actions[this.Depth].Press()
-			}
 		}
 
 		Up() {
-			if (this._CountWhenPressed < this.Depth)
+			if (!this._CountWhenPressed)
+				return
+			if (this._CountWhenPressed < this.Depth) {
 				this._StartTimer(this._CountWhenPressed, false)
-			else
+				this._CountWhenPressed := 0
+			}
+			else {
+				this._Count := this._CountWhenPressed := 0
 				this.Actions[this.Depth].Release()
-			this._CountWhenPressed := 0
+			}
 		}
 	}
 
@@ -461,6 +482,10 @@ class Functionality {
 	 * Trigger a secondary action when double clicked.
 	 */
 	class MultiClickSecondaryAction extends Functionality.Base {
+		_Triggered := false
+		_Count := 0
+		_SecondaryTriggered := false
+
 		/**
 		 * @param {String | Func | Functionality.Base | Functionality.Action} secondaryAction The secondary key to press when double clicked.
 		 * @param {Integer} timeout Maximum time between two clicks to be considered as a double click. Default is 200ms.
@@ -474,16 +499,12 @@ class Functionality {
 			if (nthClick < 2)
 				throw ValueError("nthClick must be greater or equal to 2.")
 			this.NthClick := nthClick
-			this._Triggered := false
-			this._Count := 0
-			this._SecondaryTriggered := false
 			KeyState.Initialize(key)
 		}
 
 		Down() {
 			if (this._Triggered)
 				return
-			else
 				this._Triggered := true
 			this._Count := Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key] <= this.Timeout ? this._Count + 1 : 1
 			if (this._Count < this.NthClick)
@@ -495,13 +516,15 @@ class Functionality {
 		}
 
 		Up() {
+			if (!this._Triggered)
+				return
 			this._Triggered := false
 			if (!this._SecondaryTriggered)
 				KeyState.Release(this.Key)
 			else {
-				this.SecondaryAction.Release()
 				this._Count := 0
 				this._SecondaryTriggered := false
+				this.SecondaryAction.Release()
 			}
 		}
 	}
@@ -510,13 +533,14 @@ class Functionality {
 	 * Click one key and trigger some other keys at the same time.
 	 */
 	class OneToMany extends Functionality.Base {
+		_Triggered := false
+
 		/**
 		 * @param {String[]} otherKeys The keys to be triggered at the same time.
 		 */
 		__New(key, otherKeys*) {
 			this.Key := key
 			this.OtherKeys := otherKeys
-			this._Triggered := false
 			KeyState.Initialize(key)
 			for (otherKey in otherKeys)
 				KeyState.Initialize(otherKey)
@@ -532,6 +556,8 @@ class Functionality {
 		}
 
 		Up() {
+			if (!this._Triggered)
+				return
 			this._Triggered := false
 			KeyState.Release(this.Key)
 			for (otherKey in this.OtherKeys)
@@ -543,6 +569,9 @@ class Functionality {
 	 * Trigger another key or arbitrary action when certain condition is met, e.g. when some modifier keys are pressed down.
 	 */
 	class TriggerAnotherWhen extends Functionality.Base {
+		_Triggered := false
+		_ConditionMet := 0
+
 		/**
 		 * @param {String} key Source key
 		 * @param {String | Func} condition Could be a key code, indicating the modifier key to be pressed for the secondary key to be triggered, or a function for arbitrary condition.
@@ -551,15 +580,13 @@ class Functionality {
 		 */
 		__New(key, condition, action, conditionsAndActions*) {
 			this.Key := key
-			this._DefaultAction := Functionality.Action(key)
+			this.DefaultAction := key
 			this.Conditions := Array(HasBase(condition, Func.Prototype) ? condition : () => KeyState.Logical[condition])
 			this.Actions := Array(Functionality.Action.From(action))
 			if (conditionsAndActions.Length & 1)
 				throw ValueError("Additional conditions and actions should come in pairs")
 			if (conditionsAndActions.Length > 0)
 				this.Add(conditionsAndActions*)
-			this._Triggered := false
-			this._ConditionMet := 0
 			KeyState.Initialize(key)
 		}
 
@@ -588,12 +615,13 @@ class Functionality {
 		Down() {
 			if (this._Triggered)
 				return
-			else
-				this._Triggered := true
+			this._Triggered := true
 			this._ConditionMet := 0
 			for (condition in this.Conditions)
-				if (condition.Call())
+				if (condition.Call()) {
 					this._ConditionMet := A_Index
+					break
+				}
 			if (this._ConditionMet == 0)
 				this._DefaultAction.Press()
 			else
@@ -601,6 +629,8 @@ class Functionality {
 		}
 
 		Up() {
+			if (!this._Triggered)
+				return
 			this._Triggered := false
 			if (this._ConditionMet == 0)
 				this._DefaultAction.Release()
