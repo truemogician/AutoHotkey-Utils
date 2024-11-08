@@ -426,6 +426,7 @@ class Functionality {
 	 */
 	class MultiClickSecondaryAction extends Functionality.Base {
 		_Triggered := false
+		_PrimaryLastPressed := 0
 		_Count := 0
 		_SecondaryTriggered := false
 
@@ -437,6 +438,7 @@ class Functionality {
 		 */
 		__New(key, secondaryAction, timeout := 200, nthClick := 2) {
 			this.Key := key
+			this.PrimaryAction := key
 			this.SecondaryAction := Functionality.Action.From(secondaryAction)
 			this.Timeout := timeout
 			if (nthClick < 2)
@@ -445,13 +447,24 @@ class Functionality {
 			KeyState.Initialize(key)
 		}
 
+		/**
+		 * Primary action. Defaults to clicking `Key`.
+		 */
+		PrimaryAction {
+			get => this._PrimaryAction
+			set => this._PrimaryAction := Functionality.Action.From(Value)
+		}
+
 		Down() {
 			if (this._Triggered)
 				return
-				this._Triggered := true
-			this._Count := Utils.SystemTime - KeyState.Logical.LastPressedTime[this.Key] <= this.Timeout ? this._Count + 1 : 1
-			if (this._Count < this.NthClick)
-				KeyState.Press(this.Key, true)
+			this._Triggered := true
+			now := Utils.SystemTime
+			this._Count := now - this._PrimaryLastPressed <= this.Timeout ? this._Count + 1 : 1
+			if (this._Count < this.NthClick) {
+				this._PrimaryLastPressed := now
+				this.PrimaryAction.Press()
+			}
 			else {
 				this._SecondaryTriggered := true
 				this.SecondaryAction.Press()
@@ -463,7 +476,7 @@ class Functionality {
 				return
 			this._Triggered := false
 			if (!this._SecondaryTriggered)
-				KeyState.Release(this.Key)
+				this.PrimaryAction.Release()
 			else {
 				this._Count := 0
 				this._SecondaryTriggered := false
@@ -566,7 +579,7 @@ class Functionality {
 					break
 				}
 			if (this._ConditionMet == 0)
-				this._DefaultAction.Press()
+				this.DefaultAction.Press()
 			else
 				this.Actions[this._ConditionMet].Press()
 		}
@@ -576,7 +589,7 @@ class Functionality {
 				return
 			this._Triggered := false
 			if (this._ConditionMet == 0)
-				this._DefaultAction.Release()
+				this.DefaultAction.Release()
 			else
 				this.Actions[this._ConditionMet].Release()
 		}
