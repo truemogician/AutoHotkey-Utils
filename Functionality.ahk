@@ -305,6 +305,9 @@ class Functionality {
 	 * This class allows you to perform such action at a specified frequency while holding the key.
 	 */
 	class HoldForContinuousClick extends Functionality.Base {
+		_Triggered := false
+		_ClickCount := -1
+
 		/**
 		 * @param {String} key The key to be continuously clicked.
 		 * @param {Integer} interval The interval between two clicks. Default is 250ms.
@@ -321,42 +324,45 @@ class Functionality {
 			this.MaxClick := maxClick
 			this.RecordTime := recordTime
 			this.SleepMode := sleepMode
-			this._ClickCount := -1
 			KeyState.Initialize(key)
+		}
+
+		_Sleep(time) {
+			if (this.Oscillation == 0)
+				Utils.Sleep(time, this.SleepMode)
+			else
+				Utils.Sleep(time * Random(1 - this.Oscillation, 1 + this.Oscillation))
 		}
 
 		_Loop() {
 			loop {
 				KeyState.Press(this.Key, this.RecordTime)
-				if (this.Oscillation == 0)
-					Utils.Sleep(this.PressTime, this.SleepMode)
-				else
-					Utils.Sleep(this.PressTime * Random(1 - this.Oscillation, 1 + this.Oscillation))
-				if (this._ClickCount == -1)
+				this._Sleep(this.PressTime)
+				if (!this._Triggered)
 					break
 				KeyState.Release(this.Key)
-				if (++this._ClickCount >= this.MaxClick && this.MaxClick > 0)
+				++this._ClickCount
+				if (this.MaxClick > 0 && this._ClickCount >= this.MaxClick)
 					break
-				if (this.Oscillation == 0)
-					Utils.Sleep(this.Interval, this.SleepMode)
-				else
-					Utils.Sleep(this.Interval * Random(1 - this.Oscillation, 1 + this.Oscillation))
-			} until (this._ClickCount == -1)
+				this._Sleep(this.Interval)
+			} until (!this._Triggered)
 		}
 
 		Down() {
-			if (this._ClickCount != -1)
+			if (this._Triggered)
 				return
+			this._Triggered := true
 			this._ClickCount := 0
 			SetTimer(this._Loop.Bind(this), -1)
 		}
 
 		Up() {
-			if (this._ClickCount == -1)
+			if (!this._Triggered)
 				return
+			this._Triggered := false
+			this._ClickCount := 0
 			if (KeyState.Logical[this.Key])
 				KeyState.Release(this.Key)
-			this._ClickCount := -1
 		}
 	}
 
