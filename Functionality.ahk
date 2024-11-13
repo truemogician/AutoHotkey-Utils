@@ -492,20 +492,20 @@ class Functionality {
 	}
 
 	/**
-	 * Click one key and trigger some other keys at the same time.
+	 * Click one key and trigger some other actions at the same time.
 	 */
 	class OneToMany extends Functionality.Base {
 		_Triggered := false
 
 		/**
-		 * @param {String[]} otherKeys The keys to be triggered at the same time.
+		 * @param {(String | Func | Functionality.Base | Functionality.Action)[]} otherActions Other actions to be triggered at the same time.
 		 */
-		__New(key, otherKeys*) {
+		__New(key, otherActions*) {
 			this.Key := key
-			this.OtherKeys := otherKeys
+			this.OtherActions := Array()
+			for (action in otherActions)
+				this.OtherActions.Push(Functionality.Action.From(action))
 			KeyState.Initialize(key)
-			for (otherKey in otherKeys)
-				KeyState.Initialize(otherKey)
 		}
 
 		Down() {
@@ -513,8 +513,8 @@ class Functionality {
 				return
 			this._Triggered := true
 			KeyState.Press(this.Key)
-			for (otherKey in this.OtherKeys)
-				KeyState.Press(otherKey)
+			for (action in this.OtherActions)
+				action.Press()
 		}
 
 		Up() {
@@ -522,8 +522,8 @@ class Functionality {
 				return
 			this._Triggered := false
 			KeyState.Release(this.Key)
-			for (otherKey in this.OtherKeys)
-				KeyState.Release(otherKey)
+			for (action in this.OtherActions)
+				action.Release()
 		}
 	}
 
