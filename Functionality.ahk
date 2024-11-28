@@ -179,6 +179,55 @@ class Functionality {
 	}
 
 	/**
+	 * Perform specified actions, and prevent repetition optionally.
+	 */
+	class General extends Functionality.Base {
+		_Triggered := false
+
+		/**
+		 * @param {String} key The key to record and perform the original action.
+		 * @param {Func} onPress Function to execute when `key` is pressed.
+		 * @param {Func} onRelease Function to execute when `key` is released.
+		 * @param {Boolean} noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
+		 * @param {Object} state Context state to be assigned to `Functionality.General`. Default is empty.
+		 */
+		__New(key, onPress, onRelease, noRepeat := true, state := "") {
+			if (state != "" && !HasBase(state, Object.Prototype))
+				throw ValueError("state should be an object, not a " Type(state))
+			if (state != "") {
+				for (key, value in state.OwnProps())
+					this.DefineProp(key, { Value: value })
+			}
+			this.Key := key
+			if (!HasBase(onPress, Func.Prototype))
+				throw ValueError("onPress should be a function, not a " Type(onPress))
+			this.OnPress := onPress.Bind(this)
+			if (!HasBase(onRelease, Func.Prototype))
+				throw ValueError("onRelease should be a function, not a " Type(onRelease))
+			this.OnRelease := onRelease.Bind(this)
+			this.NoRepeat := noRepeat
+			KeyState.Initialize(key)
+		}
+
+		/**
+		 * @return Whether the action is performed. Only `false` when `NoRepeat` is `true` and the event has already been triggered.
+		 */
+		Down() {
+			if (this.NoRepeat && this._Triggered)
+				return
+			this._Triggered := true
+			this.OnPress.Call()
+		}
+
+		Up() {
+			if (this.NoRepeat && !this._Triggered)
+				return
+			this._Triggered := false
+			this.OnRelease.Call()
+		}
+	}
+
+	/**
 	 * Perform the original action and record the key status.
 	 */
 	class Record extends Functionality.Base {
@@ -279,8 +328,8 @@ class Functionality {
 		Down() {
 			if (this._Triggered)
 				return
-			startTime := Utils.SystemTime
 			this._Triggered := true
+			startTime := Utils.SystemTime
 			this._LastTriggered := startTime
 			SetTimer((*) {
 				if (this._Triggered && startTime == this._LastTriggered)
