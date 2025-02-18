@@ -185,13 +185,13 @@ class Functionality {
 		_Triggered := false
 
 		/**
-		 * @param {String} key The key to record and perform the original action.
+		 * @param {String} key The key to register the functions to.
 		 * @param {Func} onPress Function to execute when `key` is pressed.
 		 * @param {Func} onRelease Function to execute when `key` is released.
 		 * @param {Boolean} noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
 		 * @param {Object} state Context state to be assigned to `Functionality.General`. Default is empty.
 		 */
-		__New(key, onPress, onRelease, noRepeat := true, state := "") {
+		__New(key, onPress, onRelease := "", noRepeat := true, state := "") {
 			if (state != "" && !HasBase(state, Object.Prototype))
 				throw ValueError("state should be an object, not a " Type(state))
 			if (state != "") {
@@ -199,14 +199,17 @@ class Functionality {
 					this.DefineProp(key, { Value: value })
 			}
 			this.Key := key
-			if (!HasBase(onPress, Func.Prototype))
+			if (onPress == "")
+				onPress := () => {}
+			else if (!HasBase(onPress, Func.Prototype))
 				throw ValueError("onPress should be a function, not a " Type(onPress))
-			this.OnPress := onPress.Bind(this)
-			if (!HasBase(onRelease, Func.Prototype))
+			this.OnPress := onPress.MaxParams == 0 ? onPress : onPress.Bind(this)
+			if (onRelease == "")
+				onRelease := () => {}
+			else if (!HasBase(onRelease, Func.Prototype))
 				throw ValueError("onRelease should be a function, not a " Type(onRelease))
-			this.OnRelease := onRelease.Bind(this)
+			this.OnRelease := onRelease.MaxParams == 0 ? onRelease : onRelease.Bind(this)
 			this.NoRepeat := noRepeat
-			KeyState.Initialize(key)
 		}
 
 		/**
