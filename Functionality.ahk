@@ -123,18 +123,39 @@ class Functionality {
 		}
 	}
 
+	class OptionalFunc {
+		/**
+		 * @param {String | Func} keyOrFunc Key code or function to be executed. Can be empty.
+		 */
+		__New(keyOrFunc) {
+			if (keyOrFunc == "")
+				this._Func := ""
+			else if (Type(keyOrFunc) == "String")
+				this._Func := () => KeyState.Click(keyOrFunc)
+			else if (HasBase(keyOrFunc, Func.Prototype))
+				this._Func := keyOrFunc
+			else
+				throw ValueError("Invalid parameter type: " Type(keyOrFunc))
+		}
+
+		Call() {
+			if (this._Func != "")
+				this._Func.Call()
+		}
+	}
+
 	class Action {
 		PressAction := ""
 		ReleaseAction := ""
 
 		/**
 		 * Create an `Action` with a key code, an instance of `Functionality.Base`, or two functions.
-		 * @param {String | Functionality.Base | Func} param1 The first parameter for the constructor, accepting 3 types:
+		 * @param {String | Func | Functionality.OptionalFunc | Functionality.Base} param1 The first parameter for the constructor, accepting 3 types:
 		 * - `String`: a key code representing the secondary key to be clicked.
+		 * - `Func` | `Functionality.OptionalFunc`: a function to be executed when pressed.
 		 * - `Functionality.Base`: an instance of a `Functionality` class.
-		 * - `Func` | `Closure`: a function to be executed when pressed.
-		 * @param {Func} param2 The optional second parameter for the "two function" signature, accepting 1 type:
-		 * - `Func` | `Closure`: a function to be executed when released.
+		 * @param {Func | Functionality.OptionalFunc} param2 The optional second parameter for the "two function" signature, accepting 1 type:
+		 * - `Func` | `Functionality.OptionalFunc`: a function to be executed when released.
 		 */
 		__New(param1, param2 := "") {
 			if (Type(param1) == "String") {
@@ -146,18 +167,18 @@ class Functionality {
 				this.PressAction := param1.Down.Bind(param1)
 				this.ReleaseAction := param1.Up.Bind(param1)
 			}
-			else if (param1 == "" || HasBase(param1, Func.Prototype)) {
+			else if (param1 == "" || HasBase(param1, Func.Prototype || HasBase(param1, Functionality.OptionalFunc.Prototype))) {
 				if (param1 == "" && param2 == "")
 					throw ValueError("param1 and param2 can't both be empty")
 				if (param1 != "")
 					this.PressAction := param1
-				if (HasBase(param2, Func.Prototype))
+				if (HasBase(param2, Func.Prototype) || HasBase(param2, Functionality.OptionalFunc.Prototype))
 					this.ReleaseAction := param2
 				else if (param2 != "")
-					throw ValueError("Invalid format of param2: " . Type(param2))
+					throw ValueError("Invalid type of param2: " . Type(param2))
 			}
 			else
-				throw ValueError("Invalid format of param1: " . Type(param1))
+				throw ValueError("Invalid type of param1: " . Type(param1))
 		}
 
 		/**
@@ -175,58 +196,6 @@ class Functionality {
 		Release() {
 			if (this.ReleaseAction != "")
 				this.ReleaseAction.Call()
-		}
-	}
-
-	/**
-	 * Perform specified actions, and prevent repetition optionally.
-	 */
-	class General extends Functionality.Base {
-		_Triggered := false
-
-		/**
-		 * @param {String} key The key to register the functions to.
-		 * @param {Func} onPress Function to execute when `key` is pressed.
-		 * @param {Func} onRelease Function to execute when `key` is released.
-		 * @param {Boolean} noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
-		 * @param {Object} state Context state to be assigned to `Functionality.General`. Default is empty.
-		 */
-		__New(key, onPress, onRelease := "", noRepeat := true, state := "") {
-			if (state != "" && !HasBase(state, Object.Prototype))
-				throw ValueError("state should be an object, not a " Type(state))
-			if (state != "") {
-				for (key, value in state.OwnProps())
-					this.DefineProp(key, { Value: value })
-			}
-			this.Key := key
-			if (onPress == "")
-				onPress := () => {}
-			else if (!HasBase(onPress, Func.Prototype))
-				throw ValueError("onPress should be a function, not a " Type(onPress))
-			this.OnPress := onPress.MaxParams == 0 ? onPress : onPress.Bind(this)
-			if (onRelease == "")
-				onRelease := () => {}
-			else if (!HasBase(onRelease, Func.Prototype))
-				throw ValueError("onRelease should be a function, not a " Type(onRelease))
-			this.OnRelease := onRelease.MaxParams == 0 ? onRelease : onRelease.Bind(this)
-			this.NoRepeat := noRepeat
-		}
-
-		/**
-		 * @return Whether the action is performed. Only `false` when `NoRepeat` is `true` and the event has already been triggered.
-		 */
-		Down() {
-			if (this.NoRepeat && this._Triggered)
-				return
-			this._Triggered := true
-			this.OnPress.Call()
-		}
-
-		Up() {
-			if (this.NoRepeat && !this._Triggered)
-				return
-			this._Triggered := false
-			this.OnRelease.Call()
 		}
 	}
 
@@ -650,6 +619,140 @@ class Functionality {
 				this.DefaultAction.Release()
 			else
 				this.Actions[this._ConditionMet].Release()
+		}
+	}
+
+	/**
+	 * Perform specified actions, and prevent repetition optionally.
+	 */
+	class General extends Functionality.Base {
+		_Triggered := false
+
+		/**
+		 * @param {Func} onPress Function to execute when `key` is pressed.
+		 * @param {Func} onRelease Function to execute when `key` is released.
+		 * @param {Boolean} noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
+		 * @param {Object} state Context state to be assigned to `Functionality.General`. Default is empty.
+		 */
+		__New(onPress, onRelease := "", noRepeat := true, state := "") {
+			if (state != "" && !HasBase(state, Object.Prototype))
+				throw ValueError("state should be an object, not a " Type(state))
+			if (state != "") {
+				for (key, value in state.OwnProps())
+					this.DefineProp(key, { Value: value })
+			}
+			this.Key := key
+			if (onPress == "")
+				onPress := () => {}
+			else if (!HasBase(onPress, Func.Prototype))
+				throw ValueError("onPress should be a function, not a " Type(onPress))
+			this.OnPress := onPress.MaxParams == 0 ? onPress : onPress.Bind(this)
+			if (onRelease == "")
+				onRelease := () => {}
+			else if (!HasBase(onRelease, Func.Prototype))
+				throw ValueError("onRelease should be a function, not a " Type(onRelease))
+			this.OnRelease := onRelease.MaxParams == 0 ? onRelease : onRelease.Bind(this)
+			this.NoRepeat := noRepeat
+		}
+
+		/**
+		 * @return Whether the action is performed. Only `false` when `NoRepeat` is `true` and the event has already been triggered.
+		 */
+		Down() {
+			if (this.NoRepeat && this._Triggered)
+				return
+			this._Triggered := true
+			this.OnPress.Call()
+		}
+
+		Up() {
+			if (this.NoRepeat && !this._Triggered)
+				return
+			this._Triggered := false
+			this.OnRelease.Call()
+		}
+	}
+
+	/**
+	 * Perform different actions when a key is pressed and released quickly or held for a while.
+	 */
+	class LongShortPress extends Functionality.Base {
+		_Triggered := false
+
+		/**
+		 * @param {String | Func} shortFunc Function to be executed when the key is pressed and released quickly.
+		 * @param {String | Func} longFunc Function to be executed when the key is held for a while.
+		 * @param {Integer} threshold The duration in milliseconds to differentiate between short and long presses. Default is 200ms.
+		 * @param {String | Func} pressFunc Function to be executed when the key is pressed. Default is empty.
+		 */
+		__New(shortFunc, longFunc, threshold := 200, pressFunc := "") {
+			this.ShortFunc := Functionality.OptionalFunc(shortFunc)
+			this.LongFunc := Functionality.OptionalFunc(longFunc)
+			this.PressFunc := Functionality.OptionalFunc(pressFunc)
+			this.Threshold := threshold
+		}
+
+		/**
+		 * Execute additional functions before and/or after the release of a key when it is held for a while.
+		 * @param {String} key
+		 * @param {String | Func} longBeforeFunc
+		 * @param {String | Func} longAfterFunc
+		 * @param {Integer} threshold
+		 * @returns {Functionality.LongShortPress}
+		 */
+		static ExecuteWhenLong(key, longBeforeFunc, longAfterFunc := "", threshold := 200) {
+			lbf := Functionality.OptionalFunc(longBeforeFunc)
+			laf := Functionality.OptionalFunc(longAfterFunc)
+			lsp := Functionality.LongShortPress(
+				() => KeyState.Release(key),
+				() => (lbf.Call(), KeyState.Release(key), laf.Call()),
+				threshold,
+				() => KeyState.Press(key)
+			)
+			lsp.Key := key
+			KeyState.Initialize(key)
+			return lsp
+		}
+
+		/**
+		 * Execute additional functions before and/or after the release of a key when it is pressed and released quickly.
+		 * @param {String} key
+		 * @param {String | Func} shortBeforeFunc
+		 * @param {String | Func} shortAfterFunc
+		 * @param {Integer} threshold
+		 * @returns {Functionality.LongShortPress}
+		 */
+		static ExecuteWhenShort(key, shortBeforeFunc, shortAfterFunc := "", threshold := 200) {
+			sbf := Functionality.OptionalFunc(shortBeforeFunc)
+			saf := Functionality.OptionalFunc(shortAfterFunc)
+			lsp := Functionality.LongShortPress(
+				() => (sbf.Call(), KeyState.Release(key), saf.Call()),
+				() => KeyState.Release(key),
+				threshold,
+				() => KeyState.Press(key)
+			)
+			lsp.Key := key
+			KeyState.Initialize(key)
+			return lsp
+		}
+
+		Down() {
+			if (this._Triggered)
+				return
+			this._Triggered := true
+			this._StartTime := Utils.SystemTime
+			if (this.PressFunc != "")
+				this.PressFunc.Call()
+		}
+
+		Up() {
+			if (!this._Triggered)
+				return
+			this._Triggered := false
+			if (Utils.SystemTime - this._StartTime >= this.Threshold)
+				this.LongFunc.Call()
+			else
+				this.ShortFunc.Call()
 		}
 	}
 
