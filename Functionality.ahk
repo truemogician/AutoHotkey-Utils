@@ -629,8 +629,8 @@ class Functionality {
 		_Triggered := false
 
 		/**
-		 * @param {Func} onPress Function to execute when `key` is pressed.
-		 * @param {Func} onRelease Function to execute when `key` is released.
+		 * @param {Func} onPress Function to execute when pressed.
+		 * @param {Func} onRelease Function to execute when released.
 		 * @param {Boolean} noRepeat If true, the key down event won't be triggered repeatedly when holding the key. Default is false.
 		 * @param {Object} state Context state to be assigned to `Functionality.General`. Default is empty.
 		 */
@@ -641,7 +641,6 @@ class Functionality {
 				for (key, value in state.OwnProps())
 					this.DefineProp(key, { Value: value })
 			}
-			this.Key := key
 			if (onPress == "")
 				onPress := () => {}
 			else if (!HasBase(onPress, Func.Prototype))
