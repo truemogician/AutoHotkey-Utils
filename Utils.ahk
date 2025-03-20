@@ -53,6 +53,15 @@ class Utils {
 		else
 			throw ValueError("Invalid sleep mode: " mode)
 	}
+
+	/**
+	 * Move mouse cursor relatively using WinAPI.
+	 * @param dx Horizontal offset.
+	 * @param dy Vertical offset.
+	 */
+	static MoveMouseRelative(dx, dy) {
+		DllCall("mouse_event", "UInt", 0x01, "UInt", dx, "UInt", dy)
+	}
 }
 
 class Logger {
