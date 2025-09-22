@@ -697,7 +697,7 @@ class Functionality {
 	}
 
 	/**
-	 * Perform different actions when a key is pressed and released quickly or held for a while.
+	 * Perform different actions on key released based on how long the key is held.
 	 */
 	class LongShortPress extends Functionality.Base {
 		_Triggered := false
@@ -776,6 +776,55 @@ class Functionality {
 				this.LongFunc.Call()
 			else
 				this.ShortFunc.Call()
+		}
+	}
+
+	/**
+	 * Perform different actions when a key is pressed and released quickly or held for a while.
+	 */
+	class LongShortPressExclusive extends Functionality.Base {
+		_Triggered := false
+		_LongPressed := false
+
+		_TimerFunc := (this, *) {
+			if (!this._Triggered || this._LongPressed)
+				return
+			this._LongPressed := true
+			this.LongAction.Down()
+		}.Bind(this)
+
+		/**
+		 * @param {String | Func} shortFunc Function to be executed when the key is pressed and released quickly.
+		 * @param {String | Func | Functionality.Base | Functionality.Action} longAction Action to be executed for long press.
+		 * @param {Integer} threshold The duration in milliseconds to differentiate between short and long presses. Default is 200ms.
+		 */
+		__New(shortFunc, longAction, threshold := 200) {
+			if (Type(shortFunc) == "String")
+				this.Key := shortFunc
+			this.ShortFunc := Functionality.OptionalFunc(shortFunc)
+			this.LongAction := Functionality.Action.From(longAction)
+			this.Threshold := threshold
+		}
+
+		Down() {
+			if (this._Triggered)
+				return
+			this._Triggered := true
+			SetTimer(this._TimerFunc, -this.Threshold)
+		}
+
+		Up() {
+			if (!this._Triggered)
+				return
+			this._Triggered := false
+			if (this._LongPressed) {
+				this._LongPressed := false
+				this.LongAction.Up()
+			}
+			else {
+				SetTimer(this._TimerFunc, 0)
+				this.ShortFunc.Call()
+			}
 		}
 	}
 
