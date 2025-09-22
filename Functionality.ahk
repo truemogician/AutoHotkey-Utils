@@ -112,9 +112,17 @@ class Functionality {
 		Up() {
 		}
 
+		Press(interval := 50) {
+			this.Down()
+			Utils.Sleep(interval)
+			this.Up()
+		}
+
 		Register(key?, keys*) {
 			if (!IsSet(key))
 				key := this.Key
+			if (key == "")
+				throw ValueError("Default key not set, please provide a key to register.")
 			for (k in [key, keys*]) {
 				Hotkey(k . " Up", (*) => this.Up())
 				Hotkey(k, (*) => this.Down())
@@ -144,7 +152,7 @@ class Functionality {
 		}
 	}
 
-	class Action {
+	class Action extends Functionality.Base {
 		PressAction := ""
 		ReleaseAction := ""
 
@@ -188,12 +196,12 @@ class Functionality {
 			return Type(action) == "Functionality.Action" ? action : Functionality.Action(action)
 		}
 
-		Press() {
+		Down() {
 			if (this.PressAction != "")
 				this.PressAction.Call()
 		}
 
-		Release() {
+		Up() {
 			if (this.ReleaseAction != "")
 				this.ReleaseAction.Call()
 		}
@@ -404,8 +412,8 @@ class Functionality {
 			this.Key := key
 			this.Threshold := threshold
 			this.Actions := Array(Functionality.Action.From(primary == "" ? key : primary))
-			for (primary in actions)
-				this.Actions.Push(Functionality.Action.From(primary))
+			for (action in actions)
+				this.Actions.Push(Functionality.Action.From(action))
 			KeyState.Initialize(key)
 		}
 
@@ -416,7 +424,7 @@ class Functionality {
 				if (count != this._Count)
 					return
 				action := this.Actions[count]
-				isPress ? action.Press() : action.Release()
+				isPress ? action.Down() : action.Up()
 			}
 			SetTimer(Callback, -this.Threshold)
 		}
@@ -431,7 +439,7 @@ class Functionality {
 			if (this._Count < this.Depth)
 				this._StartTimer(this._Count, true)
 			else
-				this.Actions[this.Depth].Press()
+				this.Actions[this.Depth].Down()
 		}
 
 		Up() {
@@ -443,7 +451,7 @@ class Functionality {
 			}
 			else {
 				this._Count := this._CountWhenPressed := 0
-				this.Actions[this.Depth].Release()
+				this.Actions[this.Depth].Up()
 			}
 		}
 	}
@@ -490,11 +498,11 @@ class Functionality {
 			this._Count := now - this._PrimaryLastPressed <= this.Timeout ? this._Count + 1 : 1
 			if (this._Count < this.NthClick) {
 				this._PrimaryLastPressed := now
-				this.PrimaryAction.Press()
+				this.PrimaryAction.Down()
 			}
 			else {
 				this._SecondaryTriggered := true
-				this.SecondaryAction.Press()
+				this.SecondaryAction.Down()
 			}
 		}
 
@@ -503,11 +511,11 @@ class Functionality {
 				return
 			this._Triggered := false
 			if (!this._SecondaryTriggered)
-				this.PrimaryAction.Release()
+				this.PrimaryAction.Up()
 			else {
 				this._Count := 0
 				this._SecondaryTriggered := false
-				this.SecondaryAction.Release()
+				this.SecondaryAction.Up()
 			}
 		}
 	}
@@ -545,7 +553,7 @@ class Functionality {
 			this._Triggered := true
 			KeyState.Press(this.Key)
 			for (action in this.OtherActions)
-				action.Press()
+				action.Down()
 		}
 
 		Up() {
@@ -555,11 +563,11 @@ class Functionality {
 			KeyState.Release(this.Key)
 			if (this._ReversedRelease) {
 				loop this.OtherActions.Length
-					this.OtherActions[this.OtherActions.Length - A_Index + 1].Release()
+					this.OtherActions[this.OtherActions.Length - A_Index + 1].Up()
 			}
 			else {
 				for (action in this.OtherActions)
-					action.Release()
+					action.Up()
 			}
 		}
 	}
@@ -622,9 +630,9 @@ class Functionality {
 					break
 				}
 			if (this._ConditionMet == 0)
-				this.DefaultAction.Press()
+				this.DefaultAction.Down()
 			else
-				this.Actions[this._ConditionMet].Press()
+				this.Actions[this._ConditionMet].Down()
 		}
 
 		Up() {
@@ -632,9 +640,9 @@ class Functionality {
 				return
 			this._Triggered := false
 			if (this._ConditionMet == 0)
-				this.DefaultAction.Release()
+				this.DefaultAction.Up()
 			else
-				this.Actions[this._ConditionMet].Release()
+				this.Actions[this._ConditionMet].Up()
 		}
 	}
 
