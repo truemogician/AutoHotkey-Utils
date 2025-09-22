@@ -517,6 +517,7 @@ class Functionality {
 	 */
 	class OneToMany extends Functionality.Base {
 		_Triggered := false
+		_ReversedRelease := false
 
 		/**
 		 * @param {(String | Func | Functionality.Base | Functionality.Action)[]} otherActions Other actions to be triggered at the same time.
@@ -527,6 +528,15 @@ class Functionality {
 			for (action in otherActions)
 				this.OtherActions.Push(Functionality.Action.From(action))
 			KeyState.Initialize(key)
+		}
+
+		/**
+		 * @param {(String | Func | Functionality.Base | Functionality.Action)[]} otherActions Other actions to be triggered at the same time.
+		 */
+		static ReversedRelease(key, otherActions*) {
+			oom := Functionality.OneToMany(key, otherActions*)
+			oom._ReversedRelease := true
+			return oom
 		}
 
 		Down() {
@@ -543,8 +553,14 @@ class Functionality {
 				return
 			this._Triggered := false
 			KeyState.Release(this.Key)
-			for (action in this.OtherActions)
-				action.Release()
+			if (this._ReversedRelease) {
+				loop this.OtherActions.Length
+					this.OtherActions[this.OtherActions.Length - A_Index + 1].Release()
+			}
+			else {
+				for (action in this.OtherActions)
+					action.Release()
+			}
 		}
 	}
 
